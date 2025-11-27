@@ -26,12 +26,19 @@ class _RAGChatPageState extends State<RAGChatPage> {
   // Controllers
   final _messageController = TextEditingController();
 
-  /// Strip thinking process tags from model output
+  /// Strip thinking process tags and special tokens from model output
   String _stripThinkingTags(String text) {
     // Remove content within <think>...</think> tags (case-insensitive)
     final regex =
         RegExp(r'<think>.*?</think>', caseSensitive: false, dotAll: true);
-    return text.replaceAll(regex, '').trim();
+    var cleaned = text.replaceAll(regex, '');
+
+    // Remove common end tokens that might leak through
+    cleaned = cleaned.replaceAll('<|im_end|>', '');
+    cleaned = cleaned.replaceAll('<end_of_turn>', '');
+    cleaned = cleaned.replaceAll('<|endoftext|>', '');
+
+    return cleaned.trim();
   }
 
   // State flags
@@ -43,7 +50,6 @@ class _RAGChatPageState extends State<RAGChatPage> {
   final List<AppMessage> _messages = [];
 
   // Document state
-  List<Document> _documents = [];
   bool _isAddingDocument = false;
   List<Map<String, dynamic>> _pendingDocs = [];
 
@@ -54,10 +60,17 @@ class _RAGChatPageState extends State<RAGChatPage> {
   // Status tracking
   String _statusMessage = 'Initializing...';
 
+  // Bulk import state
+  bool _isSyncingLibrary = false;
+
   @override
   void initState() {
     super.initState();
     CactusTelemetry.setTelemetryToken('a83c7f7a-43ad-4823-b012-cbeb587ae788');
+    // Add listener to rebuild UI when text changes (for canSend state)
+    _messageController.addListener(() {
+      setState(() {});
+    });
     _initializeSystem();
   }
 
@@ -158,6 +171,12 @@ class _RAGChatPageState extends State<RAGChatPage> {
       // Extract text based on file type
       if (extension == 'pdf') {
         content = await ReadPdfText.getPDFtext(filePath);
+
+        // Fix common PDF extraction corruptions
+        content =
+            content.replaceAll('"', 'a'); // Replace corrupted 'a' characters
+        content = content.replaceAll('ʼ', "'"); // Fix apostrophes
+        print('PDF text extracted and cleaned (${content.length} chars)');
       } else {
         // For .txt and .md files
         content = await File(filePath).readAsString();
@@ -218,30 +237,156 @@ class _RAGChatPageState extends State<RAGChatPage> {
     });
   }
 
+  /// Select multiple documents to add to library at once
+  Future<void> _selectDocumentLibrary() async {
+    try {
+      setState(() => _isSyncingLibrary = true);
+
+      // On iOS, directory access is temporary, so use multi-file picker instead
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['txt', 'md', 'pdf'],
+        allowMultiple: true, // Select multiple files at once
+      );
+
+      if (result == null || result.files.isEmpty) {
+        setState(() => _isSyncingLibrary = false);
+        return; // User cancelled
+      }
+
+      print('=== BULK IMPORT: ${result.files.length} files selected ===');
+
+      // Get existing documents in database
+      final existingDocs = await _rag.getAllDocuments();
+      final existingFileNames = existingDocs.map((d) => d.fileName).toSet();
+
+      int addedCount = 0;
+      int skippedCount = 0;
+
+      // Process each selected file
+      for (final platformFile in result.files) {
+        if (platformFile.path == null) {
+          print('Skipping file with no path');
+          skippedCount++;
+          continue;
+        }
+
+        final file = File(platformFile.path!);
+        final fileName = platformFile.name;
+
+        // Skip if already in database
+        if (existingFileNames.contains(fileName)) {
+          print('Skipping (already exists): $fileName');
+          skippedCount++;
+          continue;
+        }
+
+        try {
+          print('Processing: $fileName');
+
+          String content;
+          final extension = fileName.split('.').last.toLowerCase();
+
+          if (extension == 'pdf') {
+            content = await ReadPdfText.getPDFtext(file.path);
+            // Fix common PDF extraction corruptions
+            content = content.replaceAll('"', 'a');
+            content = content.replaceAll('ʼ', "'");
+          } else {
+            content = await file.readAsString();
+          }
+
+          if (content.trim().isEmpty) {
+            print('Skipping (empty): $fileName');
+            skippedCount++;
+            continue;
+          }
+
+          // Store in RAG database
+          await _rag.storeDocument(
+            fileName: fileName,
+            filePath: file.path,
+            content: content,
+            fileSize: platformFile.size,
+          );
+
+          addedCount++;
+          print('Added: $fileName');
+        } catch (e) {
+          print('Error processing $fileName: $e');
+          skippedCount++;
+        }
+      }
+
+      print(
+          '=== BULK IMPORT COMPLETE: $addedCount added, $skippedCount skipped ===');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Imported: $addedCount new, $skippedCount skipped',
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error importing documents: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error importing: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isSyncingLibrary = false);
+    }
+  }
+
   /// Smart send: RAG search if query exists, auto-describe if only docs
   Future<void> _sendMessage() async {
-    if (!_hasQuery && !_hasPendingDocs) return;
+    // Require a user-typed query. If documents are uploaded but no query
+    // is provided, prompt the user to type a question to query the documents.
+    if (!_hasQuery) {
+      if (_hasPendingDocs) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Document uploaded. Type a question to ask about the document(s).',
+              ),
+            ),
+          );
+        }
+      }
+      return;
+    }
 
     final userQuery = _messageController.text.trim();
     final docsToProcess = List<Map<String, dynamic>>.from(_pendingDocs);
 
-    // Clear input and pending
+    // Clear input and mark processing. Keep pending docs until used below.
     _messageController.clear();
     setState(() {
-      _pendingDocs.clear();
       _isProcessing = true;
     });
 
     try {
-      if (_hasQuery && docsToProcess.isNotEmpty) {
-        // Mode 1: RAG search with query + docs
+      // Always use RAG search if database has documents OR new docs are being added
+      if (docsToProcess.isNotEmpty) {
+        // Store new documents and search
+        setState(() => _pendingDocs.clear());
         await _ragSearchWithDocs(userQuery, docsToProcess);
-      } else if (_hasQuery) {
-        // Mode 2: Just query (no docs)
-        await _simpleQuery(userQuery);
       } else {
-        // Mode 3: Auto-describe docs (no query)
-        await _autoDescribeDocs(docsToProcess);
+        // No new documents, but check if RAG database has existing documents
+        final existingDocs = await _rag.getAllDocuments();
+        if (existingDocs.isNotEmpty) {
+          // Search existing documents in RAG database
+          await _ragSearchWithDocs(userQuery, []);
+        } else {
+          // Database is empty, fall back to simple chat
+          await _simpleQuery(userQuery);
+        }
       }
     } catch (e) {
       setState(() {
@@ -264,41 +409,109 @@ class _RAGChatPageState extends State<RAGChatPage> {
     });
 
     try {
-      // Store documents first
-      for (final doc in docs) {
-        await _rag.storeDocument(
-          fileName: doc['fileName'],
-          filePath: '', // Not needed for content-based storage
-          content: doc['content'],
-          fileSize: doc['fileSize'],
-        );
+      // Store any NEW documents (if provided)
+      if (docs.isNotEmpty) {
+        print('=== STORING NEW DOCUMENTS ===');
+        for (final doc in docs) {
+          print('Storing: ${doc['fileName']}');
+          final storedDoc = await _rag.storeDocument(
+            fileName: doc['fileName'],
+            filePath: '',
+            content: doc['content'],
+            fileSize: doc['fileSize'],
+          );
+          print(
+              'Stored: ${doc['fileName']} with ${storedDoc.chunks.length} chunks');
+        }
+        print('Successfully stored ${docs.length} new documents');
       }
 
-      // Search RAG database
-      final results = await _rag.search(text: query, limit: 3);
+      // Show all documents in database
+      final allDocs = await _rag.getAllDocuments();
+      print('=== CURRENT DATABASE ===');
+      print('Total documents: ${allDocs.length}');
+      for (final doc in allDocs) {
+        print('  - ${doc.fileName} (${doc.chunks.length} chunks)');
+      }
+      print('=== END DATABASE STATE ===');
+
+      // Search RAG database with the user's query to find relevant chunks
+      final results = await _rag.search(text: query, limit: 5);
+
+      print('Search returned ${results.length} results for query: "$query"');
+
+      // Debug: print which documents the results came from
+      for (final result in results) {
+        final docName = result.chunk.document.target?.fileName ?? 'unknown';
+        print(
+            'Result chunk from document: $docName (distance: ${result.distance})');
+      }
+
+      if (results.isEmpty) {
+        setState(() {
+          _messages.add(AppMessage(
+            text:
+                'No relevant content found in the uploaded documents. The document may be empty or the embeddings failed.',
+            isUser: false,
+          ));
+        });
+        return;
+      }
 
       // Build context from results - limit context size
       final contextChunks = results.map((r) => r.chunk.content).toList();
-      var context = contextChunks.join('\n\n');
+      var context = contextChunks.join('\n\n---\n\n');
 
-      // Truncate if context is too long (keep it under ~800 tokens ~3200 chars)
-      if (context.length > 3000) {
-        context = context.substring(0, 3000) + '...';
+      // Debug: print FULL context to terminal
+      print('=== FULL RAG CONTEXT (${context.length} chars) ===');
+      print(context);
+      print('=== END FULL CONTEXT ===');
+
+      // Verify context is not empty
+      if (context.trim().isEmpty) {
+        print('ERROR: Context is empty after joining chunks!');
+        setState(() {
+          _messages.add(AppMessage(
+            text:
+                'Error: Retrieved chunks are empty. Document may not have been stored properly.',
+            isUser: false,
+          ));
+        });
+        return;
       }
 
-      // Generate response with context
+      // Truncate if context is too long (keep it under ~2000 chars for the model)
+      if (context.length > 2000) {
+        context = context.substring(0, 2000) + '\n...[truncated for length]';
+        print('Context truncated to 2000 chars');
+      }
+
+      // Generate response with context - VERY explicit instructions
+      final systemPrompt =
+          'You are a document Q&A assistant. You must ONLY use the information provided in the Context section below. DO NOT use your general knowledge. If the answer is not in the Context, say "I cannot find that information in the provided document."';
+
+      final userPrompt = '''Here is the content from the uploaded document:
+
+CONTEXT START:
+$context
+CONTEXT END:
+
+Now answer this question using ONLY the information above: $query
+
+Remember: Only use information from the CONTEXT section above. Do not add information from your training data.''';
+
+      print('=== SENDING TO MODEL ===');
+      print('System: ${systemPrompt.substring(0, 100)}...');
+      print('User prompt length: ${userPrompt.length} chars');
+
       final response = await _chatModel.generateCompletion(
         messages: [
-          ChatMessage(
-              content:
-                  'You are a helpful assistant. Answer questions based on the provided context.',
-              role: 'system'),
-          ChatMessage(
-              content: 'Context:\n$context\n\nQuestion: $query', role: 'user'),
+          ChatMessage(content: systemPrompt, role: 'system'),
+          ChatMessage(content: userPrompt, role: 'user'),
         ],
         params: CactusCompletionParams(
-          maxTokens: 400,
-          temperature: 0.7,
+          maxTokens: 2000,
+          temperature: 0.3, // Lower temperature for more factual responses
           stopSequences: [],
         ),
       );
@@ -314,80 +527,18 @@ class _RAGChatPageState extends State<RAGChatPage> {
         return;
       }
 
-      setState(() {
-        _messages.add(AppMessage(
-          text: _stripThinkingTags(response.response),
-          isUser: false,
-        ));
-      });
-    } catch (e) {
-      setState(() {
-        _messages.add(AppMessage(
-          text: 'Error: $e',
-          isUser: false,
-        ));
-      });
-    }
-  }
+      print('=== RAW MODEL RESPONSE ===');
+      print(response.response);
+      print('=== END RAW RESPONSE ===');
 
-  /// Mode 3: Auto-describe documents
-  Future<void> _autoDescribeDocs(List<Map<String, dynamic>> docs) async {
-    try {
-      // Store documents
-      for (final doc in docs) {
-        await _rag.storeDocument(
-          fileName: doc['fileName'],
-          filePath: '',
-          content: doc['content'],
-          fileSize: doc['fileSize'],
-        );
-      }
-
-      // Generate description
-      final docNames = docs.map((d) => d['fileName']).join(', ');
-
-      // Limit document content length to avoid context overflow
-      var docContents = docs
-          .map((d) => '${d['fileName']}:\n${d['content']}')
-          .join('\n\n---\n\n');
-
-      // Truncate if too long (keep under ~1000 chars for summary)
-      if (docContents.length > 1500) {
-        docContents = docContents.substring(0, 1500) + '\n...[truncated]';
-      }
-
-      final response = await _chatModel.generateCompletion(
-        messages: [
-          ChatMessage(
-              content: 'You are a helpful assistant that summarizes documents.',
-              role: 'system'),
-          ChatMessage(
-              content:
-                  'Provide a brief summary of this document:\n\n$docContents',
-              role: 'user'),
-        ],
-        params: CactusCompletionParams(
-          maxTokens: 400,
-          temperature: 0.7,
-          stopSequences: [],
-        ),
-      );
-
-      if (!response.success) {
-        setState(() {
-          _messages.add(AppMessage(
-            text:
-                'Documents added: $docNames\n\nFailed to generate summary. The document may be too large.',
-            isUser: false,
-          ));
-        });
-        return;
-      }
+      final cleanedResponse = _stripThinkingTags(response.response);
+      print('=== CLEANED RESPONSE ===');
+      print(cleanedResponse);
+      print('=== END CLEANED ===');
 
       setState(() {
         _messages.add(AppMessage(
-          text:
-              'Documents added: $docNames\n\n${_stripThinkingTags(response.response)}',
+          text: cleanedResponse,
           isUser: false,
         ));
       });
@@ -418,7 +569,7 @@ class _RAGChatPageState extends State<RAGChatPage> {
           ChatMessage(content: query, role: 'user'),
         ],
         params: CactusCompletionParams(
-          maxTokens: 400,
+          maxTokens: 2000,
           temperature: 0.7,
           stopSequences: [],
         ),
@@ -457,21 +608,61 @@ class _RAGChatPageState extends State<RAGChatPage> {
       appBar: AppBar(
         title: const Text('Mobile RAG'),
         actions: [
-          if (_isReady)
-            IconButton(
-              icon: _isAddingDocument
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(Icons.add),
-              onPressed: _isAddingDocument ? null : _addDocument,
-              tooltip: 'Add Document',
+          if (_isReady) ...[
+            // Import status indicator
+            if (_isSyncingLibrary)
+              const Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+            // Library menu
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                switch (value) {
+                  case 'select_library':
+                    _selectDocumentLibrary();
+                    break;
+                  case 'add_single':
+                    _addDocument();
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'select_library',
+                  child: Row(
+                    children: [
+                      Icon(Icons.upload_file, size: 20),
+                      SizedBox(width: 12),
+                      Text('Bulk Import Documents'),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  value: 'add_single',
+                  enabled: !_isAddingDocument,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.add, size: 20),
+                      const SizedBox(width: 12),
+                      Text(_isAddingDocument ? 'Adding...' : 'Add Single Doc'),
+                    ],
+                  ),
+                ),
+              ],
             ),
+          ],
         ],
       ),
       body: _isInitializing
@@ -531,7 +722,7 @@ class _RAGChatPageState extends State<RAGChatPage> {
                   onAddDocument: _addDocument,
                   onSend: _sendMessage,
                   messageController: _messageController,
-                  canSend: _hasQuery || _hasPendingDocs,
+                  canSend: _hasQuery,
                 ),
               ],
             ),

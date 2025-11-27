@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 import 'package:cactus/services/telemetry.dart';
 import 'package:cactus/src/services/api/telemetry.dart';
@@ -63,7 +64,10 @@ class CactusRAG {
     if (_store != null) return;
 
     final docsDir = await getApplicationDocumentsDirectory();
-    _store = Store(getObjectBoxModel(), directory: p.join(docsDir.path, 'objectbox'));
+    _store = Store(
+      getObjectBoxModel(),
+      directory: p.join(docsDir.path, 'objectbox'),
+    );
     _documentBox = Box<Document>(_store!);
     _chunkBox = Box<DocumentChunk>(_store!);
   }
@@ -73,6 +77,24 @@ class CactusRAG {
     _store = null;
     _documentBox = null;
     _chunkBox = null;
+  }
+
+  /// Completely clears the database by removing all files
+  Future<void> clearDatabase() async {
+    // Close the store first
+    await close();
+
+    // Delete the physical database directory
+    final docsDir = await getApplicationDocumentsDirectory();
+    final dbDir = Directory(p.join(docsDir.path, 'objectbox'));
+
+    if (await dbDir.exists()) {
+      await dbDir.delete(recursive: true);
+      print('ObjectBox database directory deleted');
+    }
+
+    // Reinitialize with fresh database
+    await initialize();
   }
 
   @visibleForTesting
@@ -90,7 +112,11 @@ class CactusRAG {
     );
   }
 
-  List<String> _chunkContent(String content, {required int chunkSize, required int chunkOverlap}) {
+  List<String> _chunkContent(
+    String content, {
+    required int chunkSize,
+    required int chunkOverlap,
+  }) {
     _validateChunkingParams(chunkSize, chunkOverlap);
 
     if (content.isEmpty) return const [];
@@ -110,10 +136,18 @@ class CactusRAG {
 
   void _validateChunkingParams(int chunkSize, int chunkOverlap) {
     if (chunkSize <= 0) {
-      throw ArgumentError.value(chunkSize, 'chunkSize', 'chunkSize must be greater than 0.');
+      throw ArgumentError.value(
+        chunkSize,
+        'chunkSize',
+        'chunkSize must be greater than 0.',
+      );
     }
     if (chunkOverlap < 0) {
-      throw ArgumentError.value(chunkOverlap, 'chunkOverlap', 'chunkOverlap cannot be negative.');
+      throw ArgumentError.value(
+        chunkOverlap,
+        'chunkOverlap',
+        'chunkOverlap cannot be negative.',
+      );
     }
     if (chunkOverlap >= chunkSize) {
       throw ArgumentError(
@@ -130,7 +164,9 @@ class CactusRAG {
     String? fileHash,
   }) async {
     if (_embeddingGenerator == null) {
-      throw Exception('Embedding generator not set. Call setEmbeddingGenerator() first.');
+      throw Exception(
+        'Embedding generator not set. Call setEmbeddingGenerator() first.',
+      );
     }
 
     final existingDoc = await getDocumentByFileName(fileName);
@@ -141,7 +177,7 @@ class CactusRAG {
         chunkBox.remove(chunk.id);
       }
       existingDoc.chunks.clear();
-      
+
       // Create and store new chunks
       final chunks = _chunkContent(
         content,
@@ -150,11 +186,14 @@ class CactusRAG {
       );
       for (final chunkContent in chunks) {
         final embedding = await _embeddingGenerator!(chunkContent);
-        final chunk = DocumentChunk(content: chunkContent, embeddings: embedding);
+        final chunk = DocumentChunk(
+          content: chunkContent,
+          embeddings: embedding,
+        );
         chunk.document.target = existingDoc;
         existingDoc.chunks.add(chunk);
       }
-      
+
       existingDoc.filePath = filePath;
       existingDoc.fileSize = fileSize;
       existingDoc.fileHash = fileHash;
@@ -168,7 +207,7 @@ class CactusRAG {
         fileSize: fileSize,
         fileHash: fileHash,
       );
-      
+
       final chunks = _chunkContent(
         content,
         chunkSize: _chunkSize,
@@ -176,11 +215,14 @@ class CactusRAG {
       );
       for (final chunkContent in chunks) {
         final embedding = await _embeddingGenerator!(chunkContent);
-        final chunk = DocumentChunk(content: chunkContent, embeddings: embedding);
+        final chunk = DocumentChunk(
+          content: chunkContent,
+          embeddings: embedding,
+        );
         chunk.document.target = document;
         document.chunks.add(chunk);
       }
-      
+
       document.id = documentBox.put(document);
       document.chunks.applyToDb();
       return document;
@@ -188,7 +230,9 @@ class CactusRAG {
   }
 
   Future<Document?> getDocumentByFileName(String fileName) async {
-    final query = documentBox.query(Document_.fileName.equals(fileName)).build();
+    final query = documentBox
+        .query(Document_.fileName.equals(fileName))
+        .build();
     final result = query.findFirst();
     query.close();
     return result;
@@ -212,31 +256,34 @@ class CactusRAG {
     }
   }
 
-  Future<List<ChunkSearchResult>> search({
-    String? text,
-    int limit = 10,
-  }) async {
+  Future<List<ChunkSearchResult>> search({String? text, int limit = 10}) async {
     if (text == null) {
       throw ArgumentError('text must be provided.');
     }
 
     if (_embeddingGenerator == null) {
-      throw Exception('Embedding generator not set. Call setEmbeddingGenerator() first.');
+      throw Exception(
+        'Embedding generator not set. Call setEmbeddingGenerator() first.',
+      );
     }
 
     final queryEmbedding = await _embeddingGenerator!(text);
 
     // Use ObjectBox's native vector search with HNSW index
     final query = chunkBox
-        .query(DocumentChunk_.embeddings.nearestNeighborsF32(queryEmbedding, limit))
+        .query(
+          DocumentChunk_.embeddings.nearestNeighborsF32(queryEmbedding, limit),
+        )
         .build();
 
     final results = query.findWithScores();
     query.close();
-    return results.map((result) => ChunkSearchResult(
-      chunk: result.object,
-      distance: result.score,
-    )).toList();
+    return results
+        .map(
+          (result) =>
+              ChunkSearchResult(chunk: result.object, distance: result.score),
+        )
+        .toList();
   }
 
   Future<DatabaseStats> getStats() async {
@@ -244,7 +291,10 @@ class CactusRAG {
     final totalChunks = chunkBox.count();
     // This is an approximation of content length
     final allDocs = documentBox.getAll();
-    final totalContentLength = allDocs.fold<int>(0, (sum, doc) => sum + doc.content.length);
+    final totalContentLength = allDocs.fold<int>(
+      0,
+      (sum, doc) => sum + doc.content.length,
+    );
 
     return DatabaseStats(
       totalDocuments: totalDocs,
