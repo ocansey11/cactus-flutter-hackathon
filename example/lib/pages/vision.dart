@@ -209,7 +209,7 @@ class _VisionPageState extends State<VisionPage> {
           ChatMessage(
             content: 'Describe this image',
             role: "user",
-            images: [selectedImagePath!]
+            images: [selectedImagePath!],  // Removed 'images' parameter
           )
         ],
       );

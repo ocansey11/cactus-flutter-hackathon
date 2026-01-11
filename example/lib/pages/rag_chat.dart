@@ -9,6 +9,9 @@ import '../widgets/message_bubble.dart' show AppMessage, MessageBubble;
 import '../widgets/input_area.dart' show InputArea;
 import '../widgets/document_preview.dart';
 
+// Import the router service
+import '../services/message_router.dart';
+
 /// Main RAG Chat Page
 class RAGChatPage extends StatefulWidget {
   const RAGChatPage({super.key});
@@ -22,6 +25,9 @@ class _RAGChatPageState extends State<RAGChatPage> {
   final _embeddingModel = CactusLM();
   final _chatModel = CactusLM();
   final _rag = CactusRAG();
+
+  // Router for intelligent message routing
+  late MessageRouter _messageRouter;
 
   // Controllers
   final _messageController = TextEditingController();
@@ -67,6 +73,7 @@ class _RAGChatPageState extends State<RAGChatPage> {
   void initState() {
     super.initState();
     CactusTelemetry.setTelemetryToken('a83c7f7a-43ad-4823-b012-cbeb587ae788');
+    _messageRouter = MessageRouter(rag: _rag);
     // Add listener to rebuild UI when text changes (for canSend state)
     _messageController.addListener(() {
       setState(() {});
@@ -343,10 +350,8 @@ class _RAGChatPageState extends State<RAGChatPage> {
     }
   }
 
-  /// Smart send: RAG search if query exists, auto-describe if only docs
+  /// Smart send: Decide whether to use RAG or simple chat based on relevance
   Future<void> _sendMessage() async {
-    // Require a user-typed query. If documents are uploaded but no query
-    // is provided, prompt the user to type a question to query the documents.
     if (!_hasQuery) {
       if (_hasPendingDocs) {
         if (mounted) {
@@ -365,28 +370,42 @@ class _RAGChatPageState extends State<RAGChatPage> {
     final userQuery = _messageController.text.trim();
     final docsToProcess = List<Map<String, dynamic>>.from(_pendingDocs);
 
-    // Clear input and mark processing. Keep pending docs until used below.
+    // Clear input and mark processing
     _messageController.clear();
     setState(() {
       _isProcessing = true;
     });
 
     try {
-      // Always use RAG search if database has documents OR new docs are being added
-      if (docsToProcess.isNotEmpty) {
-        // Store new documents and search
-        setState(() => _pendingDocs.clear());
-        await _ragSearchWithDocs(userQuery, docsToProcess);
-      } else {
-        // No new documents, but check if RAG database has existing documents
-        final existingDocs = await _rag.getAllDocuments();
-        if (existingDocs.isNotEmpty) {
-          // Search existing documents in RAG database
-          await _ragSearchWithDocs(userQuery, []);
-        } else {
-          // Database is empty, fall back to simple chat
+      // Use router to determine message type
+      final routerResult = await _messageRouter.route(
+        query: userQuery,
+        hasPendingDocs: docsToProcess.isNotEmpty,
+      );
+
+      print('Router decision: $routerResult');
+      print('Explanation: ${_messageRouter.getExplanation(routerResult)}');
+
+      // Route to appropriate handler
+      switch (routerResult.messageType) {
+        case MessageType.rag:
+          setState(() => _pendingDocs.clear());
+          await _ragSearchWithDocs(userQuery, docsToProcess);
+          break;
+
+        case MessageType.simpleChat:
           await _simpleQuery(userQuery);
-        }
+          break;
+
+        case MessageType.toolCalling:
+          // Future implementation
+          setState(() {
+            _messages.add(AppMessage(
+              text: 'Tool calling not yet implemented',
+              isUser: false,
+            ));
+          });
+          break;
       }
     } catch (e) {
       setState(() {
