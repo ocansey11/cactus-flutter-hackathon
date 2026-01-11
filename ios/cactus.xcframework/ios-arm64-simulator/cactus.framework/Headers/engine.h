@@ -63,7 +63,7 @@ struct Config {
     bool use_thumbnail = true;
     uint32_t min_image_tokens = 64;
     uint32_t max_image_tokens = 256;
-        uint32_t max_num_patches = 1024;
+    uint32_t max_num_patches = 1024;
     uint32_t tile_size = 512;
     float max_pixels_tolerance = 2.0f;
     bool do_image_splitting = true;
