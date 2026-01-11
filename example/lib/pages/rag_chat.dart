@@ -174,7 +174,7 @@ class _RAGChatPageState extends State<RAGChatPage> {
 
         // Fix common PDF extraction corruptions
         content =
-            content.replaceAll('"', 'a'); // Replace corrupted 'a' characters
+            content.replaceAll('a', '"'); // Replace corrupted 'a' characters
         content = content.replaceAll('ʼ', "'"); // Fix apostrophes
         print('PDF text extracted and cleaned (${content.length} chars)');
       } else {
