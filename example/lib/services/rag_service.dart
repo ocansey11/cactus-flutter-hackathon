@@ -10,6 +10,8 @@ class RAGService {
   })  : _rag = rag,
         _embeddingModel = embeddingModel;
   
+  CactusRAG get rag => _rag;
+  
   Future<void> initialize() async {
     await _rag.initialize();
     _rag.setEmbeddingGenerator((text) async {

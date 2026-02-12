@@ -7,36 +7,31 @@ import '../widgets/input_area.dart' show InputArea;
 import '../widgets/document_preview.dart';
 
 import '../services/message_router.dart';
-import '../services/rag_service.dart';
-import '../services/chat_service.dart';
 import '../services/document_service.dart';
 import '../services/conversation_service.dart';
 
 class RAGChatPage extends StatefulWidget {
-  const RAGChatPage({super.key});
+  final ConversationService conversationService;
+  final VoidCallback? onSwitchMode;
+  
+  const RAGChatPage({
+    super.key,
+    required this.conversationService,
+    this.onSwitchMode,
+  });
 
   @override
   State<RAGChatPage> createState() => _RAGChatPageState();
 }
 
 class _RAGChatPageState extends State<RAGChatPage> {
-  final _embeddingModel = CactusLM();
-  final _chatModel = CactusLM();
-  final _rag = CactusRAG();
-  
-  late RAGService _ragService;
-  late ChatService _chatService;
   late MessageRouter _messageRouter;
-  late ConversationService _conversationService;
   
   final _messageController = TextEditingController();
   
-  bool _isInitializing = false;
-  bool _isReady = false;
   bool _isProcessing = false;
   bool _isAddingDocument = false;
   bool _isSyncingLibrary = false;
-  String _statusMessage = 'Initializing...';
   
   final List<AppMessage> _messages = [];
   List<Map<String, dynamic>> _pendingDocs = [];
@@ -47,75 +42,16 @@ class _RAGChatPageState extends State<RAGChatPage> {
   @override
   void initState() {
     super.initState();
-    CactusTelemetry.setTelemetryToken('a83c7f7a-43ad-4823-b012-cbeb587ae788');
     _messageController.addListener(() => setState(() {}));
-    _initializeSystem();
+    _messageRouter = MessageRouter(
+      rag: widget.conversationService.ragService!.rag,
+    );
   }
 
   @override
   void dispose() {
-    _embeddingModel.unload();
-    _chatModel.unload();
-    _rag.close();
     _messageController.dispose();
     super.dispose();
-  }
-
-  Future<void> _initializeSystem() async {
-    setState(() {
-      _isInitializing = true;
-      _statusMessage = 'Downloading FunctionGemma...';
-    });
-
-    try {
-      await _embeddingModel.downloadModel(
-        model: 'functiongemma-270m',
-        downloadProcessCallback: (progress, status, isError) {
-          setState(() => _statusMessage = isError ? 'Error: $status' : status);
-        },
-      );
-      
-      await _embeddingModel.initializeModel(
-        params: CactusInitParams(model: 'functiongemma-270m'),
-      );
-
-      setState(() => _statusMessage = 'Initializing chat model...');
-      await _chatModel.downloadModel(
-        model: 'functiongemma-270m',
-        downloadProcessCallback: (progress, status, isError) {
-          setState(() => _statusMessage = isError ? 'Error: $status' : status);
-        },
-      );
-      
-      await _chatModel.initializeModel(
-        params: CactusInitParams(model: 'functiongemma-270m'),
-      );
-
-      setState(() => _statusMessage = 'Setting up services...');
-      _ragService = RAGService(
-        rag: _rag,
-        embeddingModel: _embeddingModel,
-      );
-      await _ragService.initialize();
-      
-      _chatService = ChatService(chatModel: _chatModel);
-      _messageRouter = MessageRouter(rag: _rag);
-      _conversationService = ConversationService(
-        ragService: _ragService,
-        chatService: _chatService,
-      );
-
-      setState(() {
-        _isInitializing = false;
-        _isReady = true;
-        _statusMessage = 'System ready!';
-      });
-    } catch (e) {
-      setState(() {
-        _isInitializing = false;
-        _statusMessage = 'Initialization failed: $e';
-      });
-    }
   }
 
   Future<void> _addDocument() async {
@@ -187,7 +123,7 @@ class _RAGChatPageState extends State<RAGChatPage> {
         return;
       }
 
-      final existingDocs = await _ragService.getAllDocuments();
+      final existingDocs = await widget.conversationService.ragService!.getAllDocuments();
       final existingFileNames = existingDocs.map((d) => d.fileName).toSet();
 
       final files = result.files
@@ -200,7 +136,7 @@ class _RAGChatPageState extends State<RAGChatPage> {
               ))
           .toList();
 
-      final importResult = await _conversationService.bulkImport(
+      final importResult = await widget.conversationService.bulkImport(
         files: files,
         existingFileNames: existingFileNames,
       );
@@ -268,7 +204,7 @@ class _RAGChatPageState extends State<RAGChatPage> {
     _addMessage(query, isUser: true);
 
     try {
-      final response = await _conversationService.handleRAGQuery(
+      final response = await widget.conversationService.handleRAGQuery(
         query: query,
         newDocs: docs,
       );
@@ -282,7 +218,7 @@ class _RAGChatPageState extends State<RAGChatPage> {
     _addMessage(query, isUser: true);
 
     try {
-      final response = await _conversationService.handleSimpleChat(query: query);
+      final response = await widget.conversationService.handleSimpleChat(query: query);
       _addMessage(response, isUser: false);
     } catch (e) {
       _addMessage('Error: $e', isUser: false);
@@ -310,124 +246,112 @@ class _RAGChatPageState extends State<RAGChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mobile RAG'),
+        title: const Text('RAG Chat'),
         actions: [
-          if (_isReady) ...[
-            if (_isSyncingLibrary)
-              const Padding(
-                padding: EdgeInsets.only(right: 8),
-                child: Center(
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
+          IconButton(
+            icon: const Icon(Icons.mic),
+            onPressed: widget.onSwitchMode,
+            tooltip: 'Switch to Voice Chat',
+          ),
+          if (_isSyncingLibrary)
+            const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 ),
               ),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
-              onSelected: (value) {
-                switch (value) {
-                  case 'select_library':
-                    _selectDocumentLibrary();
-                    break;
-                  case 'add_single':
-                    _addDocument();
-                    break;
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'select_library',
-                  child: Row(
-                    children: [
-                      Icon(Icons.upload_file, size: 20),
-                      SizedBox(width: 12),
-                      Text('Bulk Import Documents'),
-                    ],
-                  ),
-                ),
-                const PopupMenuDivider(),
-                PopupMenuItem(
-                  value: 'add_single',
-                  enabled: !_isAddingDocument,
-                  child: Row(
-                    children: [
-                      Icon(Icons.add, size: 20),
-                      SizedBox(width: 12),
-                      Text(_isAddingDocument ? 'Adding...' : 'Add Single Doc'),
-                    ],
-                  ),
-                ),
-              ],
             ),
-          ],
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              switch (value) {
+                case 'select_library':
+                  _selectDocumentLibrary();
+                  break;
+                case 'add_single':
+                  _addDocument();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'select_library',
+                child: Row(
+                  children: [
+                    Icon(Icons.upload_file, size: 20),
+                    SizedBox(width: 12),
+                    Text('Bulk Import Documents'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'add_single',
+                enabled: !_isAddingDocument,
+                child: Row(
+                  children: [
+                    Icon(Icons.add, size: 20),
+                    SizedBox(width: 12),
+                    Text(_isAddingDocument ? 'Adding...' : 'Add Single Doc'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
-      body: _isInitializing
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 20),
-                  Text(
-                    _statusMessage,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ],
-              ),
-            )
-          : Column(
-              children: [
-                Expanded(
-                  child: _messages.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.chat_bubble_outline,
-                                size: 64,
-                                color: Colors.grey[300],
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Upload a document to start',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _messages.length,
-                          itemBuilder: (context, index) {
-                            return MessageBubble(message: _messages[index]);
-                          },
+      body: Column(
+        children: [
+          Expanded(
+            child: _messages.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64,
+                          color: Colors.grey[300],
                         ),
-                ),
-                DocumentPreview(
-                  pendingDocs: _pendingDocs,
-                  onRemove: _removePendingDoc,
-                ),
-                InputArea(
-                  isAddingDocument: _isAddingDocument,
-                  isProcessing: _isProcessing,
-                  onAddDocument: _addDocument,
-                  onSend: _sendMessage,
-                  messageController: _messageController,
-                  canSend: _hasQuery,
-                ),
-              ],
-            ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Upload a document to start',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      return MessageBubble(message: _messages[index]);
+                    },
+                  ),
+          ),
+          DocumentPreview(
+            pendingDocs: _pendingDocs,
+            onRemove: _removePendingDoc,
+          ),
+          InputArea(
+            isAddingDocument: _isAddingDocument,
+            isProcessing: _isProcessing,
+            onAddDocument: _addDocument,
+            onSend: _sendMessage,
+            messageController: _messageController,
+            canSend: _hasQuery,
+          ),
+        ],
+      ),
     );
   }
 }

@@ -4,11 +4,11 @@ import 'chat_service.dart';
 import 'document_service.dart';
 
 class ConversationService {
-  final RAGService ragService;
+  final RAGService? ragService;
   final ChatService chatService;
   
   ConversationService({
-    required this.ragService,
+    this.ragService,
     required this.chatService,
   });
   
@@ -16,9 +16,13 @@ class ConversationService {
     required String query,
     required List<Map<String, dynamic>> newDocs,
   }) async {
+    if (ragService == null) {
+      throw Exception('RAG service not initialized');
+    }
+    
     if (newDocs.isNotEmpty) {
       for (final doc in newDocs) {
-        await ragService.storeDocument(
+        await ragService!.storeDocument(
           fileName: doc['fileName'],
           filePath: doc['filePath'] ?? '',
           content: doc['content'],
@@ -27,15 +31,15 @@ class ConversationService {
       }
     }
     
-    final results = await ragService.search(query: query, limit: 5);
+    final results = await ragService!.search(query: query, limit: 5);
     
     if (results.isEmpty) {
       return 'No relevant content found in the uploaded documents.';
     }
     
-    final context = ragService.buildContext(results);
-    final systemPrompt = ragService.getSystemPrompt();
-    final userPrompt = ragService.createRAGPrompt(query, context);
+    final context = ragService!.buildContext(results);
+    final systemPrompt = ragService!.getSystemPrompt();
+    final userPrompt = ragService!.createRAGPrompt(query, context);
     
     return await chatService.ragChat(
       query: query,
@@ -52,6 +56,10 @@ class ConversationService {
     required List<FileInfo> files,
     required Set<String> existingFileNames,
   }) async {
+    if (ragService == null) {
+      throw Exception('RAG service not initialized');
+    }
+    
     int addedCount = 0;
     int skippedCount = 0;
     final errors = <String>[];
@@ -73,7 +81,7 @@ class ConversationService {
           continue;
         }
         
-        await ragService.storeDocument(
+        await ragService!.storeDocument(
           fileName: file.fileName,
           filePath: file.filePath,
           content: content,

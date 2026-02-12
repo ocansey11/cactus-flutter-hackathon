@@ -15,7 +15,7 @@ class ChatService {
         ChatMessage(content: query, role: 'user'),
       ],
       params: CactusCompletionParams(
-        maxTokens: 2000,
+        maxTokens: 200,
         temperature: 0.7,
         stopSequences: [],
       ),
