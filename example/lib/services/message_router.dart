@@ -2,13 +2,8 @@ import 'package:cactus/cactus.dart';
 
 /// Represents the type of processing to apply to a query
 enum MessageType {
-  /// Use stored documents with RAG
   rag,
-
-  /// Simple LLM conversation without documents
   simpleChat,
-
-  /// Future: Tool/function calling
   toolCalling,
 }
 
@@ -46,7 +41,6 @@ class MessageRouter {
     required bool hasPendingDocs,
   }) async {
     try {
-      // Step 1: If user uploaded new documents, always use RAG
       if (hasPendingDocs) {
         return RouterResult(
           messageType: MessageType.rag,
@@ -54,23 +48,17 @@ class MessageRouter {
           reason: 'User has pending documents to process',
         );
       }
-
-      // Step 2: Check if we have documents in the database
       final existingDocs = await rag.getAllDocuments();
 
       if (existingDocs.isEmpty) {
-        // No documents at all - fall back to simple chat
         return RouterResult(
           messageType: MessageType.simpleChat,
           isRelevant: false,
           reason: 'No documents in database',
         );
       }
-
-      // Step 3: We have documents - check query relevance
       return await _checkRelevance(query);
     } catch (e) {
-      // On error, default to simple chat
       print('Error in router: $e');
       return RouterResult(
         messageType: MessageType.simpleChat,
@@ -80,24 +68,19 @@ class MessageRouter {
     }
   }
 
-  /// Checks if query is relevant to stored documents using similarity search
   Future<RouterResult> _checkRelevance(String query) async {
     try {
       final results = await rag.search(text: query, limit: searchLimit);
-
-      // No results found
       if (results.isEmpty) {
         return RouterResult(
           messageType: MessageType.simpleChat,
           isRelevant: false,
-          relevanceScore: 1.0, // Max distance = no relevance
+          relevanceScore: 1.0,
           reason: 'No search results for query',
         );
       }
 
       final topDistance = results.first.distance;
-
-      // Check if top result meets threshold
       if (topDistance < relevanceThreshold) {
         return RouterResult(
           messageType: MessageType.rag,
@@ -122,15 +105,13 @@ class MessageRouter {
       );
     }
   }
-
-  /// Gets a human-readable explanation of the routing decision
   String getExplanation(RouterResult result) {
     return switch (result.messageType) {
       MessageType.rag => result.isRelevant
-          ? '📚 Using RAG - Your question is relevant to the uploaded documents'
-          : '📚 Using RAG - Processing with document context',
-      MessageType.simpleChat => '💬 Using simple chat - No relevant documents found',
-      MessageType.toolCalling => '🔧 Tool calling mode (not yet implemented)',
+          ? 'Using RAG - Your question is relevant to the uploaded documents'
+          : 'Using RAG - Processing with document context',
+      MessageType.simpleChat => 'Using simple chat - No relevant documents found',
+      MessageType.toolCalling => 'Tool calling mode (not yet implemented)',
     };
   }
 }
