@@ -6,7 +6,6 @@ import '../widgets/message_bubble.dart' show AppMessage, MessageBubble;
 import '../widgets/input_area.dart' show InputArea;
 import '../widgets/document_preview.dart';
 
-import '../services/message_router.dart';
 import '../services/document_service.dart';
 import '../services/conversation_service.dart';
 
@@ -25,8 +24,6 @@ class RAGChatPage extends StatefulWidget {
 }
 
 class _RAGChatPageState extends State<RAGChatPage> {
-  late MessageRouter _messageRouter;
-  
   final _messageController = TextEditingController();
   
   bool _isProcessing = false;
@@ -43,9 +40,6 @@ class _RAGChatPageState extends State<RAGChatPage> {
   void initState() {
     super.initState();
     _messageController.addListener(() => setState(() {}));
-    _messageRouter = MessageRouter(
-      rag: widget.conversationService.ragService!.rag,
-    );
   }
 
   @override
@@ -170,58 +164,23 @@ class _RAGChatPageState extends State<RAGChatPage> {
     _messageController.clear();
     setState(() => _isProcessing = true);
 
+    _addMessage(userQuery, isUser: true);
+
     try {
-      final routerResult = await _messageRouter.route(
+      final response = await widget.conversationService.handleQuery(
         query: userQuery,
-        hasPendingDocs: docsToProcess.isNotEmpty,
+        newDocs: docsToProcess.isNotEmpty ? docsToProcess : null,
       );
-
-      switch (routerResult.messageType) {
-        case MessageType.rag:
-          setState(() => _pendingDocs.clear());
-          await _handleRAGQuery(userQuery, docsToProcess);
-          break;
-
-        case MessageType.simpleChat:
-          await _handleSimpleChat(userQuery);
-          break;
-
-        case MessageType.toolCalling:
-          _addMessage('Tool calling not yet implemented', isUser: false);
-          break;
+      
+      if (docsToProcess.isNotEmpty) {
+        setState(() => _pendingDocs.clear());
       }
+      
+      _addMessage(response, isUser: false);
     } catch (e) {
       _addMessage('Error: $e', isUser: false);
     } finally {
       setState(() => _isProcessing = false);
-    }
-  }
-
-  Future<void> _handleRAGQuery(
-    String query,
-    List<Map<String, dynamic>> docs,
-  ) async {
-    _addMessage(query, isUser: true);
-
-    try {
-      final response = await widget.conversationService.handleRAGQuery(
-        query: query,
-        newDocs: docs,
-      );
-      _addMessage(response, isUser: false);
-    } catch (e) {
-      _addMessage('Error: $e', isUser: false);
-    }
-  }
-
-  Future<void> _handleSimpleChat(String query) async {
-    _addMessage(query, isUser: true);
-
-    try {
-      final response = await widget.conversationService.handleSimpleChat(query: query);
-      _addMessage(response, isUser: false);
-    } catch (e) {
-      _addMessage('Error: $e', isUser: false);
     }
   }
 

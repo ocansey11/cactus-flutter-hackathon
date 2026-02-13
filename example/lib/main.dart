@@ -5,6 +5,8 @@ import 'pages/voice_chat.dart';
 import 'services/conversation_service.dart';
 import 'services/chat_service.dart';
 import 'services/rag_service.dart';
+import 'services/function_calling_service.dart';
+import 'services/message_router.dart';
 import 'services/model_manager.dart';
 
 void main() {
@@ -42,6 +44,7 @@ class _MainPageState extends State<MainPage> {
   final _rag = CactusRAG();
   
   late CactusLM _embeddingModel;
+  late CactusLM _functionModel;
   late CactusLM _chatModel;
   late ConversationService _conversationService;
   
@@ -64,12 +67,9 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _initializeServices() async {
     try {
-      
-      const embeddingModelName = 'qwen3-0.6';  
-      const chatModelName = 'gemma3-270m';  
       setState(() => _statusMessage = 'Loading Qwen embedding model (600MB)...');
       _embeddingModel = await ModelManager.getOrInitializeLLM(
-        modelName: embeddingModelName,
+        modelName: 'qwen3-0.6',
         progressCallback: (progress, status, isError) {
           setState(() {
             if (isError) {
@@ -81,9 +81,23 @@ class _MainPageState extends State<MainPage> {
         },
       );
 
-      setState(() => _statusMessage = 'Loading Gemma chat model (270MB)...');
+      setState(() => _statusMessage = 'Loading Gemma function model (270MB)...');
+      _functionModel = await ModelManager.getOrInitializeLLM(
+        modelName: 'gemma3-270m',
+        progressCallback: (progress, status, isError) {
+          setState(() {
+            if (isError) {
+              _statusMessage = 'Error: $status';
+            } else {
+              _statusMessage = status;
+            }
+          });
+        },
+      );
+
+      setState(() => _statusMessage = 'Loading Qwen chat model (cached)...');
       _chatModel = await ModelManager.getOrInitializeLLM(
-        modelName: chatModelName,
+        modelName: 'qwen3-0.6',
         progressCallback: (progress, status, isError) {
           setState(() {
             if (isError) {
@@ -95,27 +109,36 @@ class _MainPageState extends State<MainPage> {
         },
       );
 
-      // Setup services
       setState(() => _statusMessage = 'Setting up services...');
       
       final ragService = RAGService(
         rag: _rag,
-        embeddingModel: _embeddingModel,  // Uses Qwen
+        embeddingModel: _embeddingModel,
       );
       await ragService.initialize();
 
+      final functionService = FunctionCallingService(
+        functionModel: _functionModel,
+      );
+
       final chatService = ChatService(
-        chatModel: _chatModel,  // Uses Gemma
+        chatModel: _chatModel,
+      );
+
+      final messageRouter = MessageRouter(
+        rag: _rag,
+        functionService: functionService,
       );
 
       _conversationService = ConversationService(
         chatService: chatService,
         ragService: ragService,
+        messageRouter: messageRouter,
       );
 
       setState(() {
         _isInitialized = true;
-        _statusMessage = 'Ready (Qwen embeddings + Gemma chat)';
+        _statusMessage = 'Ready';
       });
     } catch (e) {
       setState(() => _statusMessage = 'Initialization failed: $e');

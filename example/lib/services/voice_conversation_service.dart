@@ -15,7 +15,7 @@ class VoiceConversationService {
       return "I didn't hear anything. Please try again.";
     }
     
-    final response = await conversationService.handleSimpleChat(
+    final response = await conversationService.handleQuery(
       query: transcription,
     );
     
