@@ -40,11 +40,11 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   final _rag = CactusRAG();
-  
+
   late CactusLM _embeddingModel;
   late CactusLM _chatModel;
   late ConversationService _conversationService;
-  
+
   bool _isInitialized = false;
   bool _isVoiceMode = false;
   String _statusMessage = 'Initializing...';
@@ -64,10 +64,10 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _initializeServices() async {
     try {
-      
-      const embeddingModelName = 'qwen3-0.6';  
-      const chatModelName = 'gemma3-270m';  
-      setState(() => _statusMessage = 'Loading Qwen embedding model (600MB)...');
+      const embeddingModelName = 'qwen3-0.6';
+      const chatModelName = 'qwen3-0.6'; //'gemma3-270m';
+      setState(
+          () => _statusMessage = 'Loading Qwen embedding model (600MB)...');
       _embeddingModel = await ModelManager.getOrInitializeLLM(
         modelName: embeddingModelName,
         progressCallback: (progress, status, isError) {
@@ -97,15 +97,15 @@ class _MainPageState extends State<MainPage> {
 
       // Setup services
       setState(() => _statusMessage = 'Setting up services...');
-      
+
       final ragService = RAGService(
         rag: _rag,
-        embeddingModel: _embeddingModel,  // Uses Qwen
+        embeddingModel: _embeddingModel, // Uses Qwen
       );
       await ragService.initialize();
 
       final chatService = ChatService(
-        chatModel: _chatModel,  // Uses Gemma
+        chatModel: _chatModel, // Uses Gemma
       );
 
       _conversationService = ConversationService(
