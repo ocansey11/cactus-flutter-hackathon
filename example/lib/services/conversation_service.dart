@@ -35,14 +35,25 @@ class ConversationService {
     if (routeResult.functionResult?.needsTool == true && 
         routeResult.functionResult?.toolName != null) {
       try {
+        print('🔧 Executing tool: ${routeResult.functionResult!.toolName}');
+        print('🔧 Parameters: ${routeResult.functionResult!.parameters}');
         toolResult = await ToolRegistry.executeTool(
           routeResult.functionResult!.toolName!,
           routeResult.functionResult!.parameters,
           ragService: ragService,
         );
+        print('🔧 Tool result length: ${toolResult?.length ?? 0} chars');
+        
+        // If we have a tool result, return it directly for document similarity
+        if (toolResult != null && routeResult.functionResult!.toolName == 'compute_document_similarity') {
+          return toolResult;
+        }
       } catch (e) {
+        print('🔧 Tool execution error: $e');
         toolResult = null;
       }
+    } else {
+      print('🔧 No tool needed. Function result: ${routeResult.functionResult}');
     }
     
     switch (routeResult.messageType) {

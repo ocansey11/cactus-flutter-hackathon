@@ -8,6 +8,8 @@ import '../widgets/document_preview.dart';
 
 import '../services/document_service.dart';
 import '../services/conversation_service.dart';
+import '../tools/document_similarity_tool.dart';
+import 'document_graph_page.dart';
 
 class RAGChatPage extends StatefulWidget {
   final ConversationService conversationService;
@@ -29,6 +31,7 @@ class _RAGChatPageState extends State<RAGChatPage> {
   bool _isProcessing = false;
   bool _isAddingDocument = false;
   bool _isSyncingLibrary = false;
+  bool _isComputingSimilarity = false;
   
   final List<AppMessage> _messages = [];
   List<Map<String, dynamic>> _pendingDocs = [];
@@ -201,12 +204,66 @@ class _RAGChatPageState extends State<RAGChatPage> {
     }
   }
 
+  Future<void> _computeAndShowGraph() async {
+    setState(() => _isComputingSimilarity = true);
+
+    try {
+      print('🔍 Starting document similarity computation...');
+      final result = await DocumentSimilarityTool.execute(
+        {'threshold': 0.8},
+        widget.conversationService.ragService,
+      );
+      
+      print('🔍 Similarity result: $result');
+      print('🔍 Graph data: ${DocumentSimilarityTool.lastComputedGraph}');
+      
+      if (DocumentSimilarityTool.lastComputedGraph != null) {
+        final graph = DocumentSimilarityTool.lastComputedGraph!;
+        print('🔍 Nodes: ${graph.nodes.length}, Edges: ${graph.edges.length}');
+        
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DocumentGraphPage(
+                graphData: graph,
+              ),
+            ),
+          );
+        }
+      } else if (mounted) {
+        _showSnackBar('No documents to compare. Upload documents first.');
+      }
+    } catch (e) {
+      print('🔍 Error: $e');
+      if (mounted) {
+        _showSnackBar('Error computing similarity: $e');
+      }
+    } finally {
+      setState(() => _isComputingSimilarity = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('RAG Chat'),
         actions: [
+          IconButton(
+            icon: _isComputingSimilarity
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Icon(Icons.hub),
+            onPressed: _isComputingSimilarity ? null : _computeAndShowGraph,
+            tooltip: 'Compute & View Similarity Graph',
+          ),
           IconButton(
             icon: const Icon(Icons.mic),
             onPressed: widget.onSwitchMode,

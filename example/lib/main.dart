@@ -67,7 +67,8 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _initializeServices() async {
     try {
-      setState(() => _statusMessage = 'Loading Qwen embedding model (600MB)...');
+      setState(
+          () => _statusMessage = 'Loading Qwen embedding model (600MB)...');
       _embeddingModel = await ModelManager.getOrInitializeLLM(
         modelName: 'qwen3-0.6',
         progressCallback: (progress, status, isError) {
@@ -81,7 +82,8 @@ class _MainPageState extends State<MainPage> {
         },
       );
 
-      setState(() => _statusMessage = 'Loading Gemma function model (270MB)...');
+      setState(
+          () => _statusMessage = 'Loading Gemma function model (270MB)...');
       _functionModel = await ModelManager.getOrInitializeLLM(
         modelName: 'gemma3-270m',
         progressCallback: (progress, status, isError) {

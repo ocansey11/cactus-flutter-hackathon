@@ -1,80 +1,72 @@
+import 'package:cactus/cactus.dart';
 import '../services/rag_service.dart';
+import 'document_similarity_tool.dart';
 
+// Define multiple tools
+final tools = [
+  /*
+  CactusTool(
+    name: "get_weather",
+    description: "Get current weather for a location",
+    parameters: ToolParametersSchema(
+      properties: {
+        'location': ToolParameter(
+            type: 'string', description: 'City name', required: true),
+      },
+    ),
+  ),
+  CactusTool(
+    name: "get_stock_price",
+    description: "Get current stock price for a company",
+    parameters: ToolParametersSchema(
+      properties: {
+        'symbol': ToolParameter(
+            type: 'string', description: 'Stock symbol', required: true),
+      },
+    ),
+  ),
+  CactusTool(
+    name: "send_email",
+    description: "Send an email to someone",
+    parameters: ToolParametersSchema(
+      properties: {
+        'to': ToolParameter(
+            type: 'string', description: 'Email address', required: true),
+        'subject': ToolParameter(
+            type: 'string', description: 'Email subject', required: true),
+        'body': ToolParameter(
+            type: 'string', description: 'Email body', required: true),
+      },
+    ),
+  ),*/
+  CactusTool(
+    name: "compute_document_similarity",
+    description:
+        "Analyze similarity relationships between documents in the knowledge base",
+    parameters: ToolParametersSchema(
+      properties: {
+        'threshold': ToolParameter(
+            type: 'number',
+            description: 'Minimum similarity score to include (0.0-1.0)',
+            required: false),
+      },
+    ),
+  ),
+];
+
+/// Registry class to execute tools by name
 class ToolRegistry {
   static Future<String> executeTool(
-    String name,
+    String toolName,
     Map<String, dynamic> arguments, {
     RAGService? ragService,
   }) async {
-    switch (name) {
+    switch (toolName) {
       case 'compute_document_similarity':
-        return await _computeDocumentSimilarity(arguments, ragService);
+        return await DocumentSimilarityTool.execute(arguments, ragService);
+
       default:
-        throw Exception('Tool not found: $name');
+        return 'Unknown tool: $toolName';
     }
-  }
-  
-  static Future<String> _computeDocumentSimilarity(
-    Map<String, dynamic> arguments,
-    RAGService? ragService,
-  ) async {
-    if (ragService == null) {
-      return 'Error: RAG service not available';
-    }
-    
-    final threshold = (arguments['threshold'] as num?)?.toDouble() ?? 0.5;
-    
-    final documents = await ragService.getAllDocuments();
-    
-    if (documents.isEmpty) {
-      return 'No documents in knowledge base yet.';
-    }
-    
-    if (documents.length == 1) {
-      return 'Only one document in knowledge base. Need at least 2 documents to compute similarities.';
-    }
-    
-    final similarities = <Map<String, dynamic>>[];
-    
-    for (int i = 0; i < documents.length; i++) {
-      for (int j = i + 1; j < documents.length; j++) {
-        final doc1 = documents[i];
-        final doc2 = documents[j];
-        
-        final results = await ragService.search(query: doc2.fileName, limit: 5);
-        
-        if (results.isNotEmpty) {
-          final avgDistance = results.map((r) => r.distance).reduce((a, b) => a + b) / results.length;
-          final similarity = 1.0 - avgDistance;
-          
-          if (similarity >= threshold) {
-            similarities.add({
-              'doc1': doc1.fileName,
-              'doc2': doc2.fileName,
-              'similarity': similarity,
-            });
-          }
-        }
-      }
-    }
-    
-    if (similarities.isEmpty) {
-      return 'No significant similarities found between documents (threshold: $threshold).';
-    }
-    
-    similarities.sort((a, b) => (b['similarity'] as double).compareTo(a['similarity'] as double));
-    
-    final buffer = StringBuffer();
-    buffer.writeln('Document Similarity Analysis:');
-    buffer.writeln('Total documents: ${documents.length}');
-    buffer.writeln('Similarity threshold: $threshold');
-    buffer.writeln('\nRelationships found (${similarities.length}):');
-    
-    for (final sim in similarities) {
-      final score = ((sim['similarity'] as double) * 100).toStringAsFixed(1);
-      buffer.writeln('- ${sim['doc1']} ↔ ${sim['doc2']}: $score% similar');
-    }
-    
-    return buffer.toString();
   }
 }

@@ -8,6 +8,10 @@ class FunctionCallingService {
     : _functionModel = functionModel;
   
   Future<FunctionCallResult> analyzeQuery(String query) async {
+    // Document similarity is now triggered via the graph icon button
+    // Removed keyword-based detection to avoid chat-based triggering
+    
+    // Try AI-based detection for other tools
     final prompt = _buildFunctionDetectionPrompt(query);
     
     try {
@@ -26,8 +30,11 @@ class FunctionCallingService {
         return FunctionCallResult(needsTool: false);
       }
       
-      return _parseFunctionCall(response.response);
+      final result = _parseFunctionCall(response.response);
+      print('🔧 AI function detection result: needsTool=${result.needsTool}, tool=${result.toolName}');
+      return result;
     } catch (e) {
+      print('🔧 Function detection error: $e');
       return FunctionCallResult(needsTool: false);
     }
   }
@@ -36,12 +43,11 @@ class FunctionCallingService {
     return '''Analyze if this query needs a tool/function call.
 
 Available tools:
-1. compute_document_similarity: Analyze relationships between documents in knowledge base
+(Note: Document similarity is accessed via the graph icon, not chat)
 
 Query: "$query"
 
 Instructions:
-- If query asks about document relationships, similarities, or comparisons, use compute_document_similarity
 - If no tool needed, respond with: {"needs_tool": false}
 - Be precise with parameter extraction
 
