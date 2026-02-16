@@ -2,20 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:cactus/cactus.dart';
 import 'package:file_picker/file_picker.dart';
 
-import '../widgets/message_bubble.dart' show AppMessage, MessageBubble;
-import '../widgets/input_area.dart' show InputArea;
 import '../widgets/document_preview.dart';
+import '../widgets/input_area.dart';
 
+import '../services/message_router.dart';
 import '../services/document_service.dart';
 import '../services/conversation_service.dart';
+import 'package:cactus/memory/conversation_store.dart';
+
 
 class RAGChatPage extends StatefulWidget {
   final ConversationService conversationService;
+  final ConversationStore conversationStore;
+  final String currentConversationId;
   final VoidCallback? onSwitchMode;
   
   const RAGChatPage({
     super.key,
     required this.conversationService,
+    required this.conversationStore,
+    required this.currentConversationId,
     this.onSwitchMode,
   });
 
@@ -24,13 +30,15 @@ class RAGChatPage extends StatefulWidget {
 }
 
 class _RAGChatPageState extends State<RAGChatPage> {
+  late MessageRouter _messageRouter;
+  
   final _messageController = TextEditingController();
   
   bool _isProcessing = false;
   bool _isAddingDocument = false;
   bool _isSyncingLibrary = false;
   
-  final List<AppMessage> _messages = [];
+  List<Message> _messages = [];
   List<Map<String, dynamic>> _pendingDocs = [];
   
   bool get _hasQuery => _messageController.text.trim().isNotEmpty;
@@ -39,13 +47,28 @@ class _RAGChatPageState extends State<RAGChatPage> {
   @override
   void initState() {
     super.initState();
+    _loadMessages();
     _messageController.addListener(() => setState(() {}));
+    _messageRouter = MessageRouter(
+      rag: widget.conversationService.ragService!.rag,
+      functionService: widget.conversationService.ragService != null 
+          ? MessageRouter(
+              rag: widget.conversationService.ragService!.rag,
+            ).functionService
+          : null,
+    );
   }
 
   @override
   void dispose() {
     _messageController.dispose();
     super.dispose();
+  }
+
+  void _loadMessages() {
+    setState(() {
+      _messages = widget.conversationStore.getMessages(widget.currentConversationId);
+    });
   }
 
   Future<void> _addDocument() async {
@@ -164,30 +187,57 @@ class _RAGChatPageState extends State<RAGChatPage> {
     _messageController.clear();
     setState(() => _isProcessing = true);
 
-    _addMessage(userQuery, isUser: true);
-
     try {
-      final response = await widget.conversationService.handleQuery(
-        query: userQuery,
-        newDocs: docsToProcess.isNotEmpty ? docsToProcess : null,
+      await widget.conversationStore.addMessage(
+        conversationId: widget.currentConversationId,
+        text: userQuery,
+        isUser: true,
       );
-      
-      if (docsToProcess.isNotEmpty) {
-        setState(() => _pendingDocs.clear());
+      _loadMessages();
+
+      final routeResult = await _messageRouter.route(
+        query: userQuery,
+        hasPendingDocs: docsToProcess.isNotEmpty,
+      );
+
+      String response;
+      switch (routeResult.messageType) {
+        case MessageType.rag:
+          setState(() => _pendingDocs.clear());
+          response = await widget.conversationService.handleQuery(
+            query: userQuery,
+            newDocs: docsToProcess,
+          );
+          break;
+
+        case MessageType.simpleChat:
+          response = await widget.conversationService.handleQuery(
+            query: userQuery,
+            newDocs: [],
+          );
+          break;
+
+        case MessageType.toolCalling:
+          response = await widget.conversationService.handleSimpleChat(query: userQuery);
+          break;
       }
-      
-      _addMessage(response, isUser: false);
+
+      await widget.conversationStore.addMessage(
+        conversationId: widget.currentConversationId,
+        text: response,
+        isUser: false,
+      );
+      _loadMessages();
     } catch (e) {
-      _addMessage('Error: $e', isUser: false);
+      await widget.conversationStore.addMessage(
+        conversationId: widget.currentConversationId,
+        text: 'Error: $e',
+        isUser: false,
+      );
+      _loadMessages();
     } finally {
       setState(() => _isProcessing = false);
     }
-  }
-
-  void _addMessage(String text, {required bool isUser}) {
-    setState(() {
-      _messages.add(AppMessage(text: text, isUser: isUser));
-    });
   }
 
   void _showSnackBar(String message, {Duration? duration}) {
@@ -293,7 +343,8 @@ class _RAGChatPageState extends State<RAGChatPage> {
                     padding: const EdgeInsets.all(16),
                     itemCount: _messages.length,
                     itemBuilder: (context, index) {
-                      return MessageBubble(message: _messages[index]);
+                      final message = _messages[index];
+                      return _buildMessageBubble(message);
                     },
                   ),
           ),
@@ -310,6 +361,30 @@ class _RAGChatPageState extends State<RAGChatPage> {
             canSend: _hasQuery,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(Message message) {
+    return Align(
+      alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
+        ),
+        decoration: BoxDecoration(
+          color: message.isUser ? Colors.blue : Colors.grey[200],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          message.text,
+          style: TextStyle(
+            color: message.isUser ? Colors.white : Colors.black,
+            fontSize: 15,
+          ),
+        ),
       ),
     );
   }

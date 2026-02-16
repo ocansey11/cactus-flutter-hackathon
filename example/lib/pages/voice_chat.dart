@@ -3,6 +3,7 @@ import '../services/permission_service.dart';
 import '../services/voice_service.dart';
 import '../services/voice_conversation_service.dart';
 import '../services/conversation_service.dart';
+import 'package:cactus/memory/conversation_store.dart'; 
 
 enum VoiceState {
   idle,
@@ -13,11 +14,15 @@ enum VoiceState {
 
 class VoiceChatPage extends StatefulWidget {
   final ConversationService conversationService;
+  final ConversationStore conversationStore;      
+  final String currentConversationId;             
   final VoidCallback? onSwitchMode;
   
   const VoiceChatPage({
     super.key,
     required this.conversationService,
+    required this.conversationStore,              
+    required this.currentConversationId,          
     this.onSwitchMode,
   });
 
@@ -33,10 +38,13 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
   String _statusText = "Initializing...";
   bool _hasPermission = false;
   bool _isInitialized = false;
+  
+  List<Message> _messages = [];  
 
   @override
   void initState() {
     super.initState();
+    _loadMessages();  
     _initializeVoice();
   }
 
@@ -44,6 +52,12 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
   void dispose() {
     _voiceService.dispose();
     super.dispose();
+  }
+
+  void _loadMessages() {
+    setState(() {
+      _messages = widget.conversationStore.getMessages(widget.currentConversationId);
+    });
   }
 
   Future<void> _initializeVoice() async {
@@ -104,30 +118,91 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
           IconButton(
             icon: const Icon(Icons.chat),
             onPressed: widget.onSwitchMode,
-            tooltip: 'Switch to RAG Chat',
+            tooltip: 'Switch to Text Chat',
           ),
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildOrb(),
-            const SizedBox(height: 40),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                _statusText,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
+      body: Column(
+        children: [
+          // ← ADD MESSAGE HISTORY
+          Expanded(
+            child: _messages.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Hold button and speak to begin',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final msg = _messages[index];
+                      return _buildMessageBubble(msg);
+                    },
+                  ),
+          ),
+          
+          // Voice controls at bottom
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
                 ),
-                textAlign: TextAlign.center,
-              ),
+              ],
             ),
-            const SizedBox(height: 40),
-            _buildMicButton(),
-          ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildOrb(),
+                const SizedBox(height: 20),
+                Text(
+                  _statusText,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 20),
+                _buildMicButton(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(Message message) {
+    return Align(
+      alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
+        ),
+        decoration: BoxDecoration(
+          color: message.isUser ? Colors.blue : Colors.grey[200],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          message.text,
+          style: TextStyle(
+            color: message.isUser ? Colors.white : Colors.black,
+            fontSize: 15,
+          ),
         ),
       ),
     );
@@ -136,8 +211,8 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
   Widget _buildOrb() {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      width: 200,
-      height: 200,
+      width: 150,
+      height: 150,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: _getOrbColor(),
@@ -181,24 +256,24 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
       case VoiceState.idle:
         return const Icon(
           Icons.mic_none,
-          size: 80,
+          size: 60,
           color: Colors.white,
         );
       case VoiceState.listening:
         return const Icon(
           Icons.mic,
-          size: 80,
+          size: 60,
           color: Colors.white,
         );
       case VoiceState.processing:
         return const CircularProgressIndicator(
           color: Colors.white,
-          strokeWidth: 6,
+          strokeWidth: 5,
         );
       case VoiceState.speaking:
         return const Icon(
           Icons.volume_up,
-          size: 80,
+          size: 60,
           color: Colors.white,
         );
     }
@@ -267,9 +342,25 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
         return;
       }
 
+      // ← STORE USER MESSAGE
+      await widget.conversationStore.addMessage(
+        conversationId: widget.currentConversationId,
+        text: transcription,
+        isUser: true,
+      );
+      _loadMessages();  // Refresh UI
+
       setState(() => _statusText = "You said: $transcription");
       
       final response = await _voiceConversation.processVoiceInput(transcription);
+      
+      // ← STORE ASSISTANT MESSAGE
+      await widget.conversationStore.addMessage(
+        conversationId: widget.currentConversationId,
+        text: response,
+        isUser: false,
+      );
+      _loadMessages();  // Refresh UI
       
       setState(() {
         _state = VoiceState.speaking;
