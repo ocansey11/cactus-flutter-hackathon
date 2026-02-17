@@ -12,6 +12,7 @@ import 'package:cactus/memory/document_metadata_store.dart';
 import 'package:cactus/memory/similarity_cache.dart';
 import 'package:cactus/memory/conversation_store.dart';
 import 'package:cactus/memory/objectbox_manager.dart';
+import 'widgets/conversation_drawer.dart';
 
 void main() {
   runApp(const MyApp());
@@ -46,6 +47,7 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   final _rag = CactusRAG();
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   
   late CactusLM _embeddingModel;
   late CactusLM _functionModel;
@@ -183,6 +185,18 @@ class _MainPageState extends State<MainPage> {
     setState(() => _isVoiceMode = !_isVoiceMode);
   }
 
+  void _switchConversation(String conversationId) {
+    setState(() => _currentConversationId = conversationId);
+  }
+
+  Future<void> _newConversation() async {
+    final convo = await _conversationStore.createConversation(
+      title: 'New Chat',
+      isVoiceMode: _isVoiceMode,
+    );
+    setState(() => _currentConversationId = convo.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
@@ -206,18 +220,29 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-    return _isVoiceMode
-        ? VoiceChatPage(
-            conversationService: _conversationService,
-            conversationStore: _conversationStore,
-            currentConversationId: _currentConversationId,
-            onSwitchMode: _toggleMode,
-          )
-        : RAGChatPage(
-            conversationService: _conversationService,
-            conversationStore: _conversationStore,
-            currentConversationId: _currentConversationId,
-            onSwitchMode: _toggleMode,
-          );
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: ConversationDrawer(
+        conversationStore: _conversationStore,
+        currentConversationId: _currentConversationId,
+        onSelectConversation: _switchConversation,
+        onNewConversation: _newConversation,
+      ),
+      body: _isVoiceMode
+          ? VoiceChatPage(
+              conversationService: _conversationService,
+              conversationStore: _conversationStore,
+              currentConversationId: _currentConversationId,
+              onSwitchMode: _toggleMode,
+              onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+            )
+          : RAGChatPage(
+              conversationService: _conversationService,
+              conversationStore: _conversationStore,
+              currentConversationId: _currentConversationId,
+              onSwitchMode: _toggleMode,
+              onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+            ),
+    );
   }
 }

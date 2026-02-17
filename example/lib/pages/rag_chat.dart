@@ -16,6 +16,7 @@ class RAGChatPage extends StatefulWidget {
   final ConversationStore conversationStore;
   final String currentConversationId;
   final VoidCallback? onSwitchMode;
+  final VoidCallback? onOpenDrawer;
   
   const RAGChatPage({
     super.key,
@@ -23,6 +24,7 @@ class RAGChatPage extends StatefulWidget {
     required this.conversationStore,
     required this.currentConversationId,
     this.onSwitchMode,
+    this.onOpenDrawer,
   });
 
   @override
@@ -255,6 +257,10 @@ class _RAGChatPageState extends State<RAGChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: widget.onOpenDrawer,
+        ),
         title: const Text('RAG Chat'),
         actions: [
           IconButton(
