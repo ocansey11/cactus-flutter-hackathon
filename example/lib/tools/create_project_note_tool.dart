@@ -1,6 +1,7 @@
 import 'package:cactus/cactus.dart';
 import '../services/rag_service.dart';
 import '../services/project_service.dart';
+import '../prompts/prompts.dart';
 import 'tool_handler.dart';
 
 class CreateProjectNoteTool implements ToolHandler {
@@ -78,8 +79,10 @@ class CreateProjectNoteTool implements ToolHandler {
       final response = await chatModel.generateCompletion(
         messages: [
           ChatMessage(
-            content:
-                'Summarize "$paperName" in markdown with sections: Overview, Key Objectives, Methodology, Findings, Conclusions.\n\nContent:\n$context',
+            content: NoteGenerationPrompts.summary(
+              paperTitle: paperName,
+              context: context,
+            ),
             role: 'user',
           )
         ],
@@ -94,20 +97,15 @@ class CreateProjectNoteTool implements ToolHandler {
         return 'Content required for $noteType note.';
       }
 
-      final prompts = {
-        'objective':
-            'Format this project objective in markdown with: Goals, Background, Expected Outcomes.\n\n$userContent',
-        'plan':
-            'Format this project plan in markdown with: Overview, Phases, Milestones, Success Criteria.\n\n$userContent',
-        'general': null,
-      };
-
       if (noteType == 'general') {
         title = 'Note';
         content = userContent;
       } else {
+        final notePrompt = noteType == 'objective'
+            ? NoteGenerationPrompts.objective(userContent: userContent)
+            : NoteGenerationPrompts.plan(userContent: userContent);
         final response = await chatModel.generateCompletion(
-          messages: [ChatMessage(content: prompts[noteType]!, role: 'user')],
+          messages: [ChatMessage(content: notePrompt, role: 'user')],
           params: CactusCompletionParams(maxTokens: 1200, temperature: 0.7),
         );
         if (!response.success) return 'Failed to generate $noteType note.';

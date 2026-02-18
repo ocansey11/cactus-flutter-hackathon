@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:cactus/cactus.dart';
+import '../prompts/prompts.dart';
 
 class FunctionCallingService {
   final CactusLM _queryAnalyzer;  // Qwen - smart query understanding
@@ -82,23 +83,7 @@ class FunctionCallingService {
   }
   
   Future<String?> _simplifyQuery(String query) async {
-    final prompt = '''You are a query simplifier. Output ONLY the simplified action, nothing else. No explanations. No thinking process.
-
-IMPORTANT: Preserve exact paper titles - do not shorten or summarize them.
-
-Input: "$query"
-
-Examples:
-Input: "write a summary for the paper 'Disability, fairness, and algorithmic bias in AI recruitment'"
-Output: create summary note about Disability, fairness, and algorithmic bias in AI recruitment
-
-Input: "what's the methodology in the AI Bias paper"
-Output: analyze methodology section of AI Bias paper
-
-Input: "how many papers do I have"
-Output: show project statistics
-
-Output:''';
+    final prompt = ToolDispatchPrompts.querySimplify(query: query);
 
     try {
       final response = await _queryAnalyzer.generateCompletion(
@@ -153,25 +138,7 @@ Output:''';
   }
   
   Future<FunctionCallResult> _matchToTool(String simplifiedIntent) async {
-    final prompt = '''You are a function call generator. Extract the actual values from the simplified intent and generate JSON.
-
-Available functions:
-1. create_project_note - Parameters: note_type (summary/methodology/findings), paper_name
-2. analyze_research_paper - Parameters: paper_name, section (methodology/findings/introduction)
-3. get_project_context - Parameters: info_type (statistics/papers/notes/all)
-
-Input: "$simplifiedIntent"
-
-IMPORTANT: Extract ACTUAL values from the input, not placeholders!
-
-Examples:
-Input: "create summary note about AI Ethics paper"
-Output: {"function": "create_project_note", "parameters": {"note_type": "summary", "paper_name": "AI Ethics paper"}}
-
-Input: "analyze methodology section of AI Bias paper"
-Output: {"function": "analyze_research_paper", "parameters": {"paper_name": "AI Bias paper", "section": "methodology"}}
-
-Now generate JSON for the input above. Output ONLY the JSON object, nothing else:''';
+    final prompt = ToolDispatchPrompts.toolMatch(intent: simplifiedIntent);
 
     try {
       final response = await _functionModel.generateCompletion(
@@ -246,11 +213,19 @@ Now generate JSON for the input above. Output ONLY the JSON object, nothing else
       }
       
       final parameters = parsed['parameters'] as Map<String, dynamic>? ?? {};
-      
+      final confidence = (parsed['confidence'] as num?)?.toDouble() ?? 0.5;
+
+      // Below threshold — treat as no-tool to avoid wrong dispatch
+      if (confidence < 0.7) {
+        print('Gemma confidence $confidence below threshold — skipping tool');
+        return FunctionCallResult(needsTool: false);
+      }
+
       return FunctionCallResult(
         needsTool: true,
         toolName: functionName,
         parameters: parameters,
+        confidence: confidence,
       );
     } catch (e) {
       print('JSON parsing error: $e');
@@ -264,15 +239,17 @@ class FunctionCallResult {
   final bool needsTool;
   final String? toolName;
   final Map<String, dynamic> parameters;
-  
+  final double confidence;
+
   FunctionCallResult({
     required this.needsTool,
     this.toolName,
     this.parameters = const {},
+    this.confidence = 1.0,
   });
-  
+
   @override
-  String toString() {
-    return 'FunctionCallResult(needsTool: $needsTool, toolName: $toolName, parameters: $parameters)';
-  }
+  String toString() =>
+      'FunctionCallResult(needsTool: $needsTool, toolName: $toolName, '
+      'confidence: $confidence, parameters: $parameters)';
 }

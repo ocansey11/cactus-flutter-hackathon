@@ -1,4 +1,5 @@
 import 'package:cactus/cactus.dart';
+import '../prompts/prompts.dart';
 
 class RAGService {
   final CactusRAG _rag;
@@ -62,21 +63,18 @@ class RAGService {
     return context;
   }
   
-  String createRAGPrompt(String query, String context) {
-    return '''Here is the content from the uploaded document:
+  String createRAGPrompt(String query, String context) =>
+      RAGPrompts.user(query: query, context: context);
 
-CONTEXT START:
-$context
-CONTEXT END:
+  String createRAGPromptWithTool({
+    required String query,
+    required String context,
+    required String toolResult,
+  }) =>
+      RAGPrompts.userWithToolResult(
+          query: query, context: context, toolResult: toolResult);
 
-Now answer this question using ONLY the information above: $query
-
-Remember: Only use information from the CONTEXT section above. Do not add information from your training data.''';
-  }
-  
-  String getSystemPrompt() {
-    return 'You are a document Q&A assistant. You must ONLY use the information provided in the Context section below. DO NOT use your general knowledge. If the answer is not in the Context, say "I cannot find that information in the provided document."';
-  }
+  String getSystemPrompt() => RAGPrompts.system();
   
   Future<void> clearDatabase() async {
     await _rag.clearDatabase();
