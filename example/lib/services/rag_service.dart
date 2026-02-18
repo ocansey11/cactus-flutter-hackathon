@@ -26,25 +26,23 @@ class RAGService {
     required String filePath,
     required String content,
     required int fileSize,
-    String? projectName,
+    String? projectName, // reserved for future project-scoped filtering
   }) async {
     await _rag.storeDocument(
       fileName: fileName,
       filePath: filePath,
       content: content,
       fileSize: fileSize,
-      projectName: projectName,
     );
   }
   
   Future<List<ChunkSearchResult>> search({
     required String query,
-    String? projectName,
+    String? projectName, // reserved for future project-scoped filtering
     int limit = 5,
   }) async {
     return await _rag.search(
       text: query,
-      projectName: projectName,
       limit: limit,
     );
   }

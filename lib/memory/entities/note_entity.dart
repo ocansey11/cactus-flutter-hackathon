@@ -7,24 +7,15 @@ class NoteEntity {
 
   @Unique()
   String id;
-
-  // belongs to a project
+  
   @Index()
   String projectId;
 
-  // linked to the conversation that generated this note
   @Index()
   String conversationId;
-
   String title;
   String content;
-
-  // concept | summary | writeup | auto
   String noteType;
-
-  // JSON-encoded list of paper file names used as RAG sources
-  // e.g. '["paper1.pdf", "paper2.pdf"]'
-  // read-only — only updated by the model via tools
   String referencedPapers;
 
   int createdAt;

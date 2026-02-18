@@ -1,187 +1,126 @@
 import 'dart:math';
 import 'package:cactus/cactus.dart';
 import '../services/rag_service.dart';
+import '../services/project_service.dart';
 import '../models/document_graph.dart';
+import 'tool_handler.dart';
 
-class DocumentSimilarityTool {
-  // Store the last computed graph for access by the UI
-  static DocumentGraph? lastComputedGraph;
-  
-  static Map<String, dynamic> getDefinition() {
-    return {
-      'type': 'function',
-      'function': {
-        'name': 'compute_document_similarity',
-        'description':
-            'Analyze similarity relationships between documents in the knowledge base',
-        'parameters': {
-          'type': 'object',
-          'properties': {
-            'threshold': {
-              'type': 'number',
-              'description': 'Minimum similarity score to include (0.0-1.0)',
-              'default': 0.8,
-            },
+class DocumentSimilarityTool implements ToolHandler {
+  @override
+  CactusTool get definition => CactusTool(
+        name: 'compute_document_similarity',
+        description:
+            'Analyze similarity relationships between documents in the current project',
+        parameters: ToolParametersSchema(
+          properties: {
+            'threshold': ToolParameter(
+              type: 'number',
+              description: 'Minimum similarity score to include (0.0-1.0)',
+              required: false,
+            ),
           },
-          'required': [],
-        },
-      },
-    };
-  }
+        ),
+      );
 
-  static Future<String> execute(
-    Map<String, dynamic> arguments,
+  @override
+  Future<String> call(
+    Map<String, dynamic> args, {
     RAGService? ragService,
-  ) async {
-    if (ragService == null) {
-      return 'Error: RAG service not available';
-    }
+    ProjectService? projectService,
+    CactusLM? chatModel,
+  }) async {
+    if (ragService == null) return 'RAG service not available.';
 
-    final threshold = (arguments['threshold'] as num?)?.toDouble() ?? 0.8;
-
+    final threshold = (args['threshold'] as num?)?.toDouble() ?? 0.8;
+    final projectName = projectService?.currentProject?.name;
     final documents = await ragService.getAllDocuments();
 
-    if (documents.isEmpty) {
-      return 'No documents in knowledge base yet.';
+    final filtered = projectName != null
+        ? documents
+            .where((d) => d.chunks.isNotEmpty)
+            .toList()
+        : documents.where((d) => d.chunks.isNotEmpty).toList();
+
+    if (filtered.length < 2) {
+      return 'Need at least 2 documents with embeddings to compute similarities.';
     }
 
-    if (documents.length == 1) {
-      return 'Only one document in knowledge base. Need at least 2 documents to compute similarities.';
-    }
-
-    // Filter documents that have chunks with embeddings
-    final docsWithEmbeddings =
-        documents.where((doc) => doc.chunks.isNotEmpty).toList();
-
-    if (docsWithEmbeddings.isEmpty) {
-      return 'No documents with embeddings found.';
-    }
-
-    if (docsWithEmbeddings.length == 1) {
-      return 'Only one document with embeddings found. Need at least 2 documents.';
+    final docEmbeddings = <String, List<double>>{};
+    for (final doc in filtered) {
+      final embedding = _averageEmbedding(doc);
+      if (embedding.isNotEmpty) docEmbeddings[doc.fileName] = embedding;
     }
 
     final similarities = <Map<String, dynamic>>[];
-
-    // Compute embeddings for each document
-    final docEmbeddings = <String, List<double>>{};
-    for (final doc in docsWithEmbeddings) {
-      try {
-        final embedding = _getDocumentEmbedding(doc);
-        if (embedding.isNotEmpty) {
-          docEmbeddings[doc.fileName] = embedding;
-        }
-      } catch (e) {
-        // Skip documents with embedding errors
-        continue;
-      }
-    }
-
-    // Compare all pairs of documents
     final docNames = docEmbeddings.keys.toList();
+
     for (int i = 0; i < docNames.length; i++) {
       for (int j = i + 1; j < docNames.length; j++) {
-        final doc1Name = docNames[i];
-        final doc2Name = docNames[j];
-
-        final embedding1 = docEmbeddings[doc1Name]!;
-        final embedding2 = docEmbeddings[doc2Name]!;
-
-        try {
-          final similarity = cosineSimilarity(embedding1, embedding2);
-
-          if (similarity >= threshold) {
-            similarities.add({
-              'doc1': doc1Name,
-              'doc2': doc2Name,
-              'similarity': similarity,
-            });
-          }
-        } catch (e) {
-          // Skip pairs with errors
-          continue;
+        final score = _cosineSimilarity(
+          docEmbeddings[docNames[i]]!,
+          docEmbeddings[docNames[j]]!,
+        );
+        if (score >= threshold) {
+          similarities.add({
+            'doc1': docNames[i],
+            'doc2': docNames[j],
+            'similarity': score,
+          });
         }
       }
     }
 
-    // Sort by similarity (highest first)
-    similarities.sort((a, b) =>
-        (b['similarity'] as double).compareTo(a['similarity'] as double));
+    similarities.sort(
+        (a, b) => (b['similarity'] as double).compareTo(a['similarity'] as double));
 
-    // Store graph data for visualization (even if no similarities above threshold)
-    lastComputedGraph = DocumentGraph.fromSimilarities(
+    DocumentGraphStore.lastGraph = DocumentGraph.fromSimilarities(
       similarities: similarities,
       allDocuments: docNames,
       threshold: threshold,
     );
 
     if (similarities.isEmpty) {
-      return 'No similarities found above ${(threshold * 100).toStringAsFixed(0)}% threshold.\nAll ${docNames.length} documents shown as isolated nodes in graph.';
+      return 'No similarities above ${(threshold * 100).toStringAsFixed(0)}% threshold across ${docNames.length} documents.';
     }
 
     final buffer = StringBuffer();
-    buffer.writeln('Document Similarity Analysis:');
-    buffer.writeln('Total documents: ${docsWithEmbeddings.length}');
-    buffer.writeln('Similarity threshold: ${(threshold * 100).toStringAsFixed(0)}%');
-    buffer.writeln('\nRelationships found (${similarities.length}):');
+    buffer.writeln('Document Similarity Analysis');
+    buffer.writeln('Documents: ${filtered.length}  Threshold: ${(threshold * 100).toStringAsFixed(0)}%');
+    buffer.writeln('Relationships: ${similarities.length}');
+    buffer.writeln();
 
     for (final sim in similarities) {
       final score = ((sim['similarity'] as double) * 100).toStringAsFixed(1);
-      buffer.writeln('- ${sim['doc1']} ↔ ${sim['doc2']}: $score% similar');
+      buffer.writeln('${sim['doc1']} <-> ${sim['doc2']}: $score%');
     }
-    
-    buffer.writeln('\nTap "View Graph" to see visual representation');
 
     return buffer.toString();
   }
 
-  /// Compute cosine similarity between two vectors
-  static double cosineSimilarity(List<double> a, List<double> b) {
-    if (a.length != b.length) {
-      throw ArgumentError('Vectors must have same dimensions');
+  List<double> _averageEmbedding(Document doc) {
+    final chunks = doc.chunks.toList();
+    if (chunks.isEmpty) return [];
+    final dims = chunks.first.embeddings.length;
+    final avg = List<double>.filled(dims, 0.0);
+    for (final chunk in chunks) {
+      for (int i = 0; i < dims; i++) avg[i] += chunk.embeddings[i];
     }
+    for (int i = 0; i < dims; i++) avg[i] /= chunks.length;
+    return avg;
+  }
 
-    double dotProduct = 0.0;
-    double magnitudeA = 0.0;
-    double magnitudeB = 0.0;
-
+  double _cosineSimilarity(List<double> a, List<double> b) {
+    double dot = 0, magA = 0, magB = 0;
     for (int i = 0; i < a.length; i++) {
-      dotProduct += a[i] * b[i];
-      magnitudeA += a[i] * a[i];
-      magnitudeB += b[i] * b[i];
+      dot += a[i] * b[i];
+      magA += a[i] * a[i];
+      magB += b[i] * b[i];
     }
-
-    if (magnitudeA == 0.0 || magnitudeB == 0.0) {
-      return 0.0;
-    }
-
-    magnitudeA = sqrt(magnitudeA);
-    magnitudeB = sqrt(magnitudeB);
-
-    return dotProduct / (magnitudeA * magnitudeB);
+    if (magA == 0 || magB == 0) return 0.0;
+    return dot / (sqrt(magA) * sqrt(magB));
   }
+}
 
-  /// Compute average embedding vector for a document from its chunks
-  static List<double> _getDocumentEmbedding(Document doc) {
-    if (doc.chunks.isEmpty) {
-      return [];
-    }
-
-    final chunkList = doc.chunks.toList();
-    final dimensions = chunkList.first.embeddings.length;
-    final avgEmbedding = List<double>.filled(dimensions, 0.0);
-
-    for (final chunk in chunkList) {
-      for (int i = 0; i < dimensions; i++) {
-        avgEmbedding[i] += chunk.embeddings[i];
-      }
-    }
-
-    // Average the embeddings
-    for (int i = 0; i < dimensions; i++) {
-      avgEmbedding[i] /= chunkList.length;
-    }
-
-    return avgEmbedding;
-  }
+class DocumentGraphStore {
+  static DocumentGraph? lastGraph;
 }

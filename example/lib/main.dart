@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cactus/cactus.dart';
 import 'pages/projects_page.dart';
 import 'services/conversation_service.dart';
+import 'services/project_service.dart';
 import 'services/chat_service.dart';
 import 'services/rag_service.dart';
 import 'services/function_calling_service.dart';
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Cactus Hackathon',
+      title: 'Cactus',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -46,7 +47,7 @@ class _MainPageState extends State<MainPage> {
   late CactusLM _chatModel;
   late CactusLM _functionModel;
   late ConversationService _conversationService;
-  ProjectService? _projectService;
+  late ProjectService _projectService;
 
   bool _isInitialized = false;
   String _statusMessage = 'Initializing...';
@@ -66,74 +67,59 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _initializeServices() async {
     try {
-      setState(
-          () => _statusMessage = 'Loading Qwen embedding model (600MB)...');
+      setState(() => _statusMessage = 'Loading embedding model...');
       _embeddingModel = await ModelManager.getOrInitializeLLM(
         modelName: 'qwen3-0.6',
         progressCallback: (progress, status, isError) {
-          setState(() {
-            if (isError) {
-              _statusMessage = 'Error: $status';
-            } else {
-              _statusMessage = status;
-            }
-          });
+          setState(() => _statusMessage = isError ? 'Error: $status' : status);
         },
       );
 
-      setState(
-          () => _statusMessage = 'Loading Gemma function model (270MB)...');
+      setState(() => _statusMessage = 'Loading function model...');
       _functionModel = await ModelManager.getOrInitializeLLM(
         modelName: 'gemma3-270m',
         progressCallback: (progress, status, isError) {
-          setState(() {
-            if (isError) {
-              _statusMessage = 'Error: $status';
-            } else {
-              _statusMessage = status;
-            }
-          });
+          setState(() => _statusMessage = isError ? 'Error: $status' : status);
         },
       );
 
-      setState(() => _statusMessage = 'Loading Qwen chat model (cached)...');
+      setState(() => _statusMessage = 'Loading chat model...');
       _chatModel = await ModelManager.getOrInitializeLLM(
         modelName: 'qwen3-0.6',
         progressCallback: (progress, status, isError) {
-          setState(() {
-            if (isError) {
-              _statusMessage = 'Error: $status';
-            } else {
-              _statusMessage = status;
-            }
-          });
+          setState(() => _statusMessage = isError ? 'Error: $status' : status);
         },
       );
 
       setState(() => _statusMessage = 'Setting up services...');
 
-      final ragService = RAGService(
-        rag: _rag,
-        embeddingModel: _embeddingModel,
-      );
+      final ragService = RAGService(rag: _rag, embeddingModel: _embeddingModel);
       await ragService.initialize();
 
-      final functionService = FunctionCallingService(
-        queryAnalyzer: _chatModel,       // Qwen - smart query understanding
-        functionModel: _functionModel,   // Gemma - lightweight function dispatcher
+      await ObjectBoxManager.initialize(_rag);
+
+      final projectStore = ProjectStore();
+      final conversationStore = ConversationStore(embeddingModel: _embeddingModel);
+      final metadataStore = DocumentMetadataStore();
+      final noteStore = NoteStore();
+
+      _projectService = ProjectService(
+        projectStore: projectStore,
+        conversationStore: conversationStore,
+        metadataStore: metadataStore,
+        noteStore: noteStore,
       );
 
-      final chatService = ChatService(
-        chatModel: _chatModel,
+      final chatService = ChatService(chatModel: _chatModel);
+
+      final functionService = FunctionCallingService(
+        queryAnalyzer: _chatModel,
+        functionModel: _functionModel,
       );
 
       final messageRouter = MessageRouter(
         rag: _rag,
         functionService: functionService,
-      );
-
-      _projectService = ProjectService(
-        store: _rag.store,
       );
 
       _conversationService = ConversationService(
@@ -177,7 +163,7 @@ class _MainPageState extends State<MainPage> {
 
     return ProjectsPage(
       conversationService: _conversationService,
-      projectService: _projectService!,
+      projectService: _projectService,
     );
   }
 }

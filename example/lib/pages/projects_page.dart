@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cactus/cactus.dart';
 import '../services/conversation_service.dart';
+import '../services/project_service.dart';
+import '../tools/document_similarity_tool.dart';
 import 'rag_chat.dart';
 import 'document_graph_page.dart';
-import '../tools/document_similarity_tool.dart';
 
 class ProjectsPage extends StatefulWidget {
   final ProjectService projectService;
@@ -20,7 +21,7 @@ class ProjectsPage extends StatefulWidget {
 }
 
 class _ProjectsPageState extends State<ProjectsPage> {
-  List<ResearchProject> _projects = [];
+  List<Project> _projects = [];
 
   @override
   void initState() {
@@ -78,7 +79,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
     );
 
     if (result == true && nameController.text.isNotEmpty) {
-      await widget.projectService.createProject(
+      widget.projectService.createProject(
         name: nameController.text.trim(),
         description: descController.text.trim().isEmpty
             ? null
@@ -88,9 +89,9 @@ class _ProjectsPageState extends State<ProjectsPage> {
     }
   }
 
-  Future<void> _selectProject(ResearchProject project) async {
+  Future<void> _selectProject(Project project) async {
     widget.projectService.setCurrentProject(project);
-    
+
     if (mounted) {
       await Navigator.push(
         context,
@@ -101,18 +102,18 @@ class _ProjectsPageState extends State<ProjectsPage> {
           ),
         ),
       );
-      
       setState(() {});
     }
   }
 
-  Future<void> _deleteProject(ResearchProject project) async {
+  Future<void> _deleteProject(Project project) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Project'),
         content: Text(
-          'Are you sure you want to delete "${project.name}"? This will remove all associated files and notes.',
+          'Are you sure you want to delete "${project.name}"? '
+          'This will remove all associated papers and notes.',
         ),
         actions: [
           TextButton(
@@ -121,9 +122,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete'),
           ),
         ],
@@ -131,31 +130,28 @@ class _ProjectsPageState extends State<ProjectsPage> {
     );
 
     if (confirm == true) {
-      await widget.projectService.deleteProject(project.id);
+      widget.projectService.deleteProject(project.id);
       _loadProjects();
     }
   }
 
   Future<void> _openGraphView() async {
     try {
-      final result = await DocumentSimilarityTool.execute(
+      final tool = DocumentSimilarityTool();
+      await tool.call(
         {'threshold': 0.8},
-        widget.conversationService.ragService,
+        ragService: widget.conversationService.ragService,
+        projectService: widget.projectService,
       );
 
-      if (DocumentSimilarityTool.lastComputedGraph != null) {
-        final graph = DocumentSimilarityTool.lastComputedGraph!;
-
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DocumentGraphPage(
-                graphData: graph,
-              ),
-            ),
-          );
-        }
+      final graph = DocumentGraphStore.lastGraph;
+      if (graph != null && mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DocumentGraphPage(graphData: graph),
+          ),
+        );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No documents to compare')),
@@ -176,8 +172,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
       builder: (context) => AlertDialog(
         title: const Text('Clear Vector Database?'),
         content: const Text(
-          'This will permanently delete all documents and embeddings from the vector database. '
-          'Project folders and files will not be affected.\n\n'
+          'This will permanently delete all documents and embeddings. '
           'This action cannot be undone.',
         ),
         actions: [
@@ -187,9 +182,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Clear Database'),
           ),
         ],
@@ -199,11 +192,10 @@ class _ProjectsPageState extends State<ProjectsPage> {
     if (confirmed == true) {
       try {
         await widget.conversationService.ragService?.clearDatabase();
-        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Vector database cleared successfully'),
+              content: Text('Vector database cleared'),
               backgroundColor: Colors.green,
             ),
           );
@@ -211,10 +203,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error clearing database: $e'),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
           );
         }
       }
@@ -236,9 +225,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'clear_db') {
-                _clearVectorDatabase();
-              }
+              if (value == 'clear_db') _clearVectorDatabase();
             },
             itemBuilder: (context) => [
               const PopupMenuItem(
@@ -260,24 +247,22 @@ class _ProjectsPageState extends State<ProjectsPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.folder_open,
-                    size: 80,
-                    color: Colors.grey[400],
-                  ),
+                  Icon(Icons.folder_open, size: 80, color: Colors.grey[400]),
                   const SizedBox(height: 16),
                   Text(
                     'No projects yet',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Create a project to organize your research',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[500],
-                        ),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: Colors.grey[500]),
                   ),
                 ],
               ),
@@ -288,7 +273,9 @@ class _ProjectsPageState extends State<ProjectsPage> {
               itemBuilder: (context, index) {
                 final project = _projects[index];
                 final isSelected = currentProject?.id == project.id;
-                final stats = widget.projectService.getProjectStats(project.id);
+                final papers =
+                    widget.projectService.getDocuments(project.id);
+                final notes = widget.projectService.getNotes(project.id);
 
                 return Card(
                   elevation: isSelected ? 4 : 1,
@@ -298,9 +285,8 @@ class _ProjectsPageState extends State<ProjectsPage> {
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.blue,
+                      backgroundColor:
+                          isSelected ? Theme.of(context).colorScheme.primary : Colors.blue,
                       child: Icon(
                         isSelected ? Icons.check : Icons.folder,
                         color: Colors.white,
@@ -330,7 +316,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
                                 const Icon(Icons.description,
                                     size: 16, color: Colors.grey),
                                 const SizedBox(width: 4),
-                                Text('${stats.documentCount} papers'),
+                                Text('${papers.length} papers'),
                               ],
                             ),
                             Row(
@@ -339,7 +325,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
                                 const Icon(Icons.note,
                                     size: 16, color: Colors.grey),
                                 const SizedBox(width: 4),
-                                Text('${stats.noteCount} notes'),
+                                Text('${notes.length} notes'),
                               ],
                             ),
                           ],
@@ -372,14 +358,8 @@ class _ProjectsPageState extends State<ProjectsPage> {
                         ),
                       ],
                       onSelected: (value) {
-                        switch (value) {
-                          case 'select':
-                            _selectProject(project);
-                            break;
-                          case 'delete':
-                            _deleteProject(project);
-                            break;
-                        }
+                        if (value == 'select') _selectProject(project);
+                        if (value == 'delete') _deleteProject(project);
                       },
                     ),
                     onTap: () => _selectProject(project),
