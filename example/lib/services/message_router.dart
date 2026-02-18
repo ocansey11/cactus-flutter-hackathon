@@ -42,6 +42,7 @@ class MessageRouter {
     required String query,
     required bool hasPendingDocs,
   }) async {
+    
     FunctionCallResult? functionResult;
 
     try {

@@ -5,6 +5,8 @@ class ChatService {
   
   ChatService({required CactusLM chatModel}) : _chatModel = chatModel;
   
+  CactusLM get chatModel => _chatModel;
+  
   Future<String> simpleChat(String query) async {
     final response = await _chatModel.generateCompletion(
       messages: [
@@ -15,7 +17,7 @@ class ChatService {
         ChatMessage(content: query, role: 'user'),
       ],
       params: CactusCompletionParams(
-        maxTokens: 200,
+        maxTokens: 500,
         temperature: 0.7,
         stopSequences: [],
       ),

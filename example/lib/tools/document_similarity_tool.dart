@@ -130,7 +130,7 @@ class DocumentSimilarityTool {
       buffer.writeln('- ${sim['doc1']} ↔ ${sim['doc2']}: $score% similar');
     }
     
-    buffer.writeln('\n📊 Tap "View Graph" to see visual representation');
+    buffer.writeln('\nTap "View Graph" to see visual representation');
 
     return buffer.toString();
   }

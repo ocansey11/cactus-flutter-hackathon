@@ -26,20 +26,27 @@ class RAGService {
     required String filePath,
     required String content,
     required int fileSize,
+    String? projectName,
   }) async {
     await _rag.storeDocument(
       fileName: fileName,
       filePath: filePath,
       content: content,
       fileSize: fileSize,
+      projectName: projectName,
     );
   }
   
   Future<List<ChunkSearchResult>> search({
     required String query,
+    String? projectName,
     int limit = 5,
   }) async {
-    return await _rag.search(text: query, limit: limit);
+    return await _rag.search(
+      text: query,
+      projectName: projectName,
+      limit: limit,
+    );
   }
   
   Future<List<Document>> getAllDocuments() async {
@@ -71,6 +78,10 @@ Remember: Only use information from the CONTEXT section above. Do not add inform
   
   String getSystemPrompt() {
     return 'You are a document Q&A assistant. You must ONLY use the information provided in the Context section below. DO NOT use your general knowledge. If the answer is not in the Context, say "I cannot find that information in the provided document."';
+  }
+  
+  Future<void> clearDatabase() async {
+    await _rag.clearDatabase();
   }
   
   void close() {

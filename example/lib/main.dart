@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cactus/cactus.dart';
-import 'pages/rag_chat.dart';
-import 'pages/voice_chat.dart';
+import 'pages/projects_page.dart';
 import 'services/conversation_service.dart';
 import 'services/chat_service.dart';
 import 'services/rag_service.dart';
@@ -44,12 +43,12 @@ class _MainPageState extends State<MainPage> {
   final _rag = CactusRAG();
 
   late CactusLM _embeddingModel;
-  late CactusLM _functionModel;
   late CactusLM _chatModel;
+  late CactusLM _functionModel;
   late ConversationService _conversationService;
+  ProjectService? _projectService;
 
   bool _isInitialized = false;
-  bool _isVoiceMode = false;
   String _statusMessage = 'Initializing...';
 
   @override
@@ -120,7 +119,8 @@ class _MainPageState extends State<MainPage> {
       await ragService.initialize();
 
       final functionService = FunctionCallingService(
-        functionModel: _functionModel,
+        queryAnalyzer: _chatModel,       // Qwen - smart query understanding
+        functionModel: _functionModel,   // Gemma - lightweight function dispatcher
       );
 
       final chatService = ChatService(
@@ -132,10 +132,15 @@ class _MainPageState extends State<MainPage> {
         functionService: functionService,
       );
 
+      _projectService = ProjectService(
+        store: _rag.store,
+      );
+
       _conversationService = ConversationService(
         chatService: chatService,
         ragService: ragService,
         messageRouter: messageRouter,
+        projectService: _projectService,
       );
 
       setState(() {
@@ -145,10 +150,6 @@ class _MainPageState extends State<MainPage> {
     } catch (e) {
       setState(() => _statusMessage = 'Initialization failed: $e');
     }
-  }
-
-  void _toggleMode() {
-    setState(() => _isVoiceMode = !_isVoiceMode);
   }
 
   @override
@@ -174,14 +175,9 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-    return _isVoiceMode
-        ? VoiceChatPage(
-            conversationService: _conversationService,
-            onSwitchMode: _toggleMode,
-          )
-        : RAGChatPage(
-            conversationService: _conversationService,
-            onSwitchMode: _toggleMode,
-          );
+    return ProjectsPage(
+      conversationService: _conversationService,
+      projectService: _projectService!,
+    );
   }
 }

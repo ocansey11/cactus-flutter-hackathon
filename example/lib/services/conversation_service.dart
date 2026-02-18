@@ -9,16 +9,19 @@ class ConversationService {
   final RAGService? ragService;
   final ChatService chatService;
   final MessageRouter? messageRouter;
+  final ProjectService? projectService;
   
   ConversationService({
     this.ragService,
     required this.chatService,
     this.messageRouter,
+    this.projectService,
   });
   
   Future<String> handleQuery({
     required String query,
     List<Map<String, dynamic>>? newDocs,
+    String? projectName,
   }) async {
     final hasPendingDocs = newDocs != null && newDocs.isNotEmpty;
     
@@ -34,26 +37,33 @@ class ConversationService {
     String? toolResult;
     if (routeResult.functionResult?.needsTool == true && 
         routeResult.functionResult?.toolName != null) {
+      print('🔧 Tool execution detected: ${routeResult.functionResult!.toolName}');
+      print('   Parameters: ${routeResult.functionResult!.parameters}');
       try {
-        print('🔧 Executing tool: ${routeResult.functionResult!.toolName}');
-        print('🔧 Parameters: ${routeResult.functionResult!.parameters}');
         toolResult = await ToolRegistry.executeTool(
           routeResult.functionResult!.toolName!,
           routeResult.functionResult!.parameters,
           ragService: ragService,
+          chatModel: chatService.chatModel,
+          projectService: projectService,
         );
-        print('🔧 Tool result length: ${toolResult?.length ?? 0} chars');
+        print('✅ Tool execution completed successfully');
         
-        // If we have a tool result, return it directly for document similarity
-        if (toolResult != null && routeResult.functionResult!.toolName == 'compute_document_similarity') {
+        // Return tool results directly for certain tools that don't need chat model processing
+        final directReturnTools = ['compute_document_similarity', 'create_project_note'];
+        if (directReturnTools.contains(routeResult.functionResult!.toolName)) {
+          print('\n========== DIRECT RETURN TRIGGERED ==========');
+          print('Tool name: ${routeResult.functionResult!.toolName}');
+          print('Result length: ${toolResult.length} chars');
+          print('Result preview (first 300 chars):');
+          print(toolResult.substring(0, toolResult.length > 300 ? 300 : toolResult.length));
+          print('============================================\n');
           return toolResult;
         }
       } catch (e) {
-        print('🔧 Tool execution error: $e');
+        print('❌ Tool execution FAILED: $e');
         toolResult = null;
       }
-    } else {
-      print('🔧 No tool needed. Function result: ${routeResult.functionResult}');
     }
     
     switch (routeResult.messageType) {
@@ -62,6 +72,7 @@ class ConversationService {
           query: query,
           newDocs: newDocs ?? [],
           toolResult: toolResult,
+          projectName: projectName,
         );
       
       case MessageType.simpleChat:
@@ -79,6 +90,7 @@ class ConversationService {
     required String query,
     required List<Map<String, dynamic>> newDocs,
     String? toolResult,
+    String? projectName,
   }) async {
     if (newDocs.isNotEmpty) {
       for (final doc in newDocs) {
@@ -87,11 +99,16 @@ class ConversationService {
           filePath: doc['filePath'] ?? '',
           content: doc['content'],
           fileSize: doc['fileSize'],
+          projectName: projectName,
         );
       }
     }
     
-    final results = await ragService!.search(query: query, limit: 5);
+    final results = await ragService!.search(
+      query: query,
+      projectName: projectName,
+      limit: 5,
+    );
     
     if (results.isEmpty) {
       return 'No relevant content found in the uploaded documents.';
@@ -145,6 +162,7 @@ Answer the question using the tool analysis result above.''',
   Future<String> handleRAGQuery({
     required String query,
     required List<Map<String, dynamic>> newDocs,
+    String? projectName,
   }) async {
     if (ragService == null) {
       throw Exception('RAG service not initialized');
@@ -157,11 +175,16 @@ Answer the question using the tool analysis result above.''',
           filePath: doc['filePath'] ?? '',
           content: doc['content'],
           fileSize: doc['fileSize'],
+          projectName: projectName,
         );
       }
     }
     
-    final results = await ragService!.search(query: query, limit: 5);
+    final results = await ragService!.search(
+      query: query,
+      projectName: projectName,
+      limit: 5,
+    );
     
     if (results.isEmpty) {
       return 'No relevant content found in the uploaded documents.';
@@ -185,6 +208,7 @@ Answer the question using the tool analysis result above.''',
   Future<BulkImportResult> bulkImport({
     required List<FileInfo> files,
     required Set<String> existingFileNames,
+    String? projectName,
   }) async {
     if (ragService == null) {
       throw Exception('RAG service not initialized');
@@ -216,6 +240,7 @@ Answer the question using the tool analysis result above.''',
           filePath: file.filePath,
           content: content,
           fileSize: file.fileSize,
+          projectName: projectName,
         );
         
         addedCount++;

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cactus/cactus.dart';
 import 'package:file_picker/file_picker.dart';
@@ -10,15 +11,17 @@ import '../services/document_service.dart';
 import '../services/conversation_service.dart';
 import '../tools/document_similarity_tool.dart';
 import 'document_graph_page.dart';
+import 'papers_page.dart';
+import 'notes_page.dart';
 
 class RAGChatPage extends StatefulWidget {
   final ConversationService conversationService;
-  final VoidCallback? onSwitchMode;
+  final ProjectService? projectService;
   
   const RAGChatPage({
     super.key,
     required this.conversationService,
-    this.onSwitchMode,
+    this.projectService,
   });
 
   @override
@@ -80,6 +83,19 @@ class _RAGChatPageState extends State<RAGChatPage> {
         return;
       }
 
+      // Save to project directory if a project is active
+      if (widget.projectService?.currentProject != null) {
+        try {
+          await widget.projectService!.storageService.savePaperToProject(
+            projectName: widget.projectService!.currentProject!.name,
+            fileName: file.name,
+            sourceFile: File(file.path!),
+          );
+        } catch (e) {
+          print('Error saving to project directory: $e');
+        }
+      }
+
       setState(() {
         _pendingDocs.add(DocumentService.createDocumentMetadata(
           fileName: file.name,
@@ -133,10 +149,31 @@ class _RAGChatPageState extends State<RAGChatPage> {
               ))
           .toList();
 
+      // Save files to project directory if a project is active
+      if (widget.projectService?.currentProject != null) {
+        for (final file in files.where((f) => !existingFileNames.contains(f.fileName))) {
+          try {
+            await widget.projectService!.storageService.savePaperToProject(
+              projectName: widget.projectService!.currentProject!.name,
+              fileName: file.fileName,
+              sourceFile: File(file.filePath),
+            );
+          } catch (e) {
+            print('Error saving ${file.fileName} to project directory: $e');
+          }
+        }
+      }
+
       final importResult = await widget.conversationService.bulkImport(
         files: files,
         existingFileNames: existingFileNames,
+        projectName: widget.projectService?.currentProject?.name,
       );
+
+      // Link imported documents to current project
+      if (widget.projectService?.currentProject != null && importResult.addedCount > 0) {
+        await _linkBulkImportedDocuments(files.where((f) => !existingFileNames.contains(f.fileName)).toList());
+      }
 
       if (mounted) {
         _showSnackBar(
@@ -173,9 +210,14 @@ class _RAGChatPageState extends State<RAGChatPage> {
       final response = await widget.conversationService.handleQuery(
         query: userQuery,
         newDocs: docsToProcess.isNotEmpty ? docsToProcess : null,
+        projectName: widget.projectService?.currentProject?.name,
       );
       
       if (docsToProcess.isNotEmpty) {
+        // Link documents to current project if one is active
+        if (widget.projectService?.currentProject != null) {
+          await _linkDocumentsToProject(docsToProcess);
+        }
         setState(() => _pendingDocs.clear());
       }
       
@@ -184,6 +226,55 @@ class _RAGChatPageState extends State<RAGChatPage> {
       _addMessage('Error: $e', isUser: false);
     } finally {
       setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _linkDocumentsToProject(List<Map<String, dynamic>> docs) async {
+    try {
+      final allDocs = await widget.conversationService.ragService!.getAllDocuments();
+      final currentProject = widget.projectService!.currentProject!;
+      
+      for (final doc in docs) {
+        final fileName = doc['fileName'];
+        final ragDoc = allDocs.firstWhere(
+          (d) => d.fileName == fileName,
+          orElse: () => throw Exception('Document not found in RAG'),
+        );
+        
+        await widget.projectService!.addDocumentToProject(
+          projectId: currentProject.id,
+          documentId: ragDoc.id,
+          documentFileName: fileName,
+        );
+      }
+      
+      print('Linked ${docs.length} documents to project ${currentProject.name}');
+    } catch (e) {
+      print('Error linking documents to project: $e');
+    }
+  }
+
+  Future<void> _linkBulkImportedDocuments(List<FileInfo> files) async {
+    try {
+      final allDocs = await widget.conversationService.ragService!.getAllDocuments();
+      final currentProject = widget.projectService!.currentProject!;
+      
+      for (final file in files) {
+        final ragDoc = allDocs.firstWhere(
+          (d) => d.fileName == file.fileName,
+          orElse: () => throw Exception('Document not found in RAG'),
+        );
+        
+        await widget.projectService!.addDocumentToProject(
+          projectId: currentProject.id,
+          documentId: ragDoc.id,
+          documentFileName: file.fileName,
+        );
+      }
+      
+      print('Linked ${files.length} bulk imported documents to project ${currentProject.name}');
+    } catch (e) {
+      print('Error linking bulk imported documents to project: $e');
     }
   }
 
@@ -208,18 +299,18 @@ class _RAGChatPageState extends State<RAGChatPage> {
     setState(() => _isComputingSimilarity = true);
 
     try {
-      print('🔍 Starting document similarity computation...');
+      print('Starting document similarity computation...');
       final result = await DocumentSimilarityTool.execute(
         {'threshold': 0.8},
         widget.conversationService.ragService,
       );
       
-      print('🔍 Similarity result: $result');
-      print('🔍 Graph data: ${DocumentSimilarityTool.lastComputedGraph}');
+      print('Similarity result: $result');
+      print('Graph data: ${DocumentSimilarityTool.lastComputedGraph}');
       
       if (DocumentSimilarityTool.lastComputedGraph != null) {
         final graph = DocumentSimilarityTool.lastComputedGraph!;
-        print('🔍 Nodes: ${graph.nodes.length}, Edges: ${graph.edges.length}');
+        print('Nodes: ${graph.nodes.length}, Edges: ${graph.edges.length}');
         
         if (mounted) {
           Navigator.push(
@@ -235,7 +326,7 @@ class _RAGChatPageState extends State<RAGChatPage> {
         _showSnackBar('No documents to compare. Upload documents first.');
       }
     } catch (e) {
-      print('🔍 Error: $e');
+      print('Error: $e');
       if (mounted) {
         _showSnackBar('Error computing similarity: $e');
       }
@@ -244,11 +335,45 @@ class _RAGChatPageState extends State<RAGChatPage> {
     }
   }
 
+  Future<void> _navigateToPapers() async {
+    if (widget.projectService == null) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PapersPage(
+          projectService: widget.projectService!,
+        ),
+      ),
+    );
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _navigateToNotes() async {
+    if (widget.projectService == null) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NotesPage(
+          projectService: widget.projectService!,
+        ),
+      ),
+    );
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('RAG Chat'),
+        title: Text(widget.projectService?.currentProject?.name ?? 'Research Assistant'),
         actions: [
           IconButton(
             icon: _isComputingSimilarity
@@ -263,11 +388,6 @@ class _RAGChatPageState extends State<RAGChatPage> {
                 : const Icon(Icons.hub),
             onPressed: _isComputingSimilarity ? null : _computeAndShowGraph,
             tooltip: 'Compute & View Similarity Graph',
-          ),
-          IconButton(
-            icon: const Icon(Icons.mic),
-            onPressed: widget.onSwitchMode,
-            tooltip: 'Switch to Voice Chat',
           ),
           if (_isSyncingLibrary)
             const Padding(
@@ -324,6 +444,48 @@ class _RAGChatPageState extends State<RAGChatPage> {
       ),
       body: Column(
         children: [
+          if (widget.projectService?.currentProject != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                border: Border(
+                  bottom: BorderSide(
+                    color: Theme.of(context).dividerColor,
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: _navigateToPapers,
+                      icon: const Icon(Icons.description_outlined, size: 20),
+                      label: const Text('Papers'),
+                      style: TextButton.styleFrom(
+                        alignment: Alignment.centerLeft,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 24,
+                    color: Theme.of(context).dividerColor,
+                  ),
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: _navigateToNotes,
+                      icon: const Icon(Icons.note_outlined, size: 20),
+                      label: const Text('Notes'),
+                      style: TextButton.styleFrom(
+                        alignment: Alignment.centerLeft,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: _messages.isEmpty
                 ? Center(

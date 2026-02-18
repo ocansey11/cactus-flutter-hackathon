@@ -32,7 +32,7 @@ class _DocumentGraphPageState extends State<DocumentGraphPage> {
   }
 
   void _calculateNodePositions() {
-    print('📊 Calculating positions for ${widget.graphData.nodes.length} nodes');
+    print('Calculating positions for ${widget.graphData.nodes.length} nodes');
     
     nodePositions = {};
     final nodes = widget.graphData.nodes;
@@ -74,7 +74,7 @@ class _DocumentGraphPageState extends State<DocumentGraphPage> {
       // If we couldn't find a good position after 100 attempts, use the last one anyway
       if (newPosition != null) {
         nodePositions[node.id] = newPosition;
-        print('📊 Node ${node.fileName} at (${newPosition.dx}, ${newPosition.dy})');
+        print('Node ${node.fileName} at (${newPosition.dx}, ${newPosition.dy})');
       }
     }
   }
