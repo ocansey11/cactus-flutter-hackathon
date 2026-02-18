@@ -14,11 +14,13 @@ enum VoiceState {
 class VoiceChatPage extends StatefulWidget {
   final ConversationService conversationService;
   final VoidCallback? onSwitchMode;
+  final VoidCallback? onOpenDrawer;
   
   const VoiceChatPage({
     super.key,
     required this.conversationService,
     this.onSwitchMode,
+    this.onOpenDrawer,
   });
 
   @override
@@ -99,6 +101,10 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: widget.onOpenDrawer,
+        ),
         title: const Text('Voice Chat'),
         actions: [
           IconButton(

@@ -13,15 +13,22 @@ import '../tools/document_similarity_tool.dart';
 import 'document_graph_page.dart';
 import 'papers_page.dart';
 import 'notes_page.dart';
+import 'voice_chat.dart';
 
 class RAGChatPage extends StatefulWidget {
   final ConversationService conversationService;
   final ProjectService? projectService;
+  final String? currentConversationId;
+  final VoidCallback? onSwitchMode;
+  final VoidCallback? onOpenDrawer;
 
   const RAGChatPage({
     super.key,
     required this.conversationService,
     this.projectService,
+    this.currentConversationId,
+    this.onSwitchMode,
+    this.onOpenDrawer,
   });
 
   @override
@@ -36,7 +43,7 @@ class _RAGChatPageState extends State<RAGChatPage> {
   bool _isSyncingLibrary = false;
   bool _isComputingSimilarity = false;
 
-  final List<AppMessage> _messages = [];
+  List<AppMessage> _messages = [];
   List<Map<String, dynamic>> _pendingDocs = [];
 
   bool get _hasQuery => _messageController.text.trim().isNotEmpty;
@@ -49,6 +56,26 @@ class _RAGChatPageState extends State<RAGChatPage> {
   void initState() {
     super.initState();
     _messageController.addListener(() => setState(() {}));
+    _loadMessages();
+  }
+
+  void _loadMessages() {
+    final convoId = widget.currentConversationId;
+    if (convoId == null || widget.projectService == null) return;
+    final stored = widget.projectService!.getMessages(convoId);
+    setState(() {
+      _messages = stored
+          .map((m) => AppMessage(text: m.text, isUser: m.isUser))
+          .toList();
+    });
+  }
+
+  @override
+  void didUpdateWidget(RAGChatPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentConversationId != widget.currentConversationId) {
+      _loadMessages();
+    }
   }
 
   @override
@@ -203,6 +230,15 @@ class _RAGChatPageState extends State<RAGChatPage> {
 
   void _addMessage(String text, {required bool isUser}) {
     setState(() => _messages.add(AppMessage(text: text, isUser: isUser)));
+    // Persist to ObjectBox
+    final convoId = widget.currentConversationId;
+    if (convoId != null && widget.projectService != null) {
+      widget.projectService!.addMessage(
+        conversationId: convoId,
+        text: text,
+        isUser: isUser,
+      );
+    }
   }
 
   void _showSnackBar(String message, {Duration? duration}) {
@@ -258,6 +294,18 @@ class _RAGChatPageState extends State<RAGChatPage> {
     if (mounted) setState(() {});
   }
 
+  void _openVoiceChat() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VoiceChatPage(
+          conversationService: widget.conversationService,
+          onSwitchMode: () => Navigator.pop(context),
+        ),
+      ),
+    );
+  }
+
   Future<void> _navigateToNotes() async {
     if (widget.projectService == null) return;
     await Navigator.push(
@@ -274,8 +322,17 @@ class _RAGChatPageState extends State<RAGChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: widget.onOpenDrawer,
+        ),
         title: Text(_currentProject?.name ?? 'Research Assistant'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.mic),
+            onPressed: widget.onSwitchMode,
+            tooltip: 'Switch to Voice',
+          ),
           IconButton(
             icon: _isComputingSimilarity
                 ? const SizedBox(
