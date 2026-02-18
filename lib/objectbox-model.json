@@ -82,10 +82,328 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "3:2617416385248953606",
+      "lastPropertyId": "7:1060009147678557791",
+      "name": "ConversationEntity",
+      "properties": [
+        {
+          "id": "1:1547101101014507500",
+          "name": "objectId",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:7634570227937599096",
+          "name": "id",
+          "indexId": "4:2850450357795753942",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:60120734471259881",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "4:5264892376357687216",
+          "name": "projectId",
+          "indexId": "5:4888970972699856262",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "5:8138608103091881129",
+          "name": "isVoiceMode",
+          "type": 1
+        },
+        {
+          "id": "6:8459178114539488673",
+          "name": "createdAt",
+          "type": 6
+        },
+        {
+          "id": "7:1060009147678557791",
+          "name": "updatedAt",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "4:8040542858561334186",
+      "lastPropertyId": "9:3044553595637880143",
+      "name": "DocumentMetadataEntity",
+      "properties": [
+        {
+          "id": "1:8850540418728823591",
+          "name": "objectId",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:7123928943014272078",
+          "name": "id",
+          "indexId": "6:6938945229732593059",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:8431175876606482876",
+          "name": "projectId",
+          "indexId": "7:2668716781406918444",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "4:6752078333306420539",
+          "name": "fileName",
+          "type": 9
+        },
+        {
+          "id": "5:1469300595539296414",
+          "name": "filePath",
+          "type": 9
+        },
+        {
+          "id": "6:4121775901676186040",
+          "name": "fileSize",
+          "type": 6
+        },
+        {
+          "id": "7:8427528688909925831",
+          "name": "uploadedAt",
+          "type": 6
+        },
+        {
+          "id": "8:6364544506473654774",
+          "name": "lastModified",
+          "type": 6
+        },
+        {
+          "id": "9:3044553595637880143",
+          "name": "customMetadata",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "5:8563557470803973959",
+      "lastPropertyId": "8:1768838721030721925",
+      "name": "MessageEntity",
+      "properties": [
+        {
+          "id": "1:6786729368956907398",
+          "name": "objectId",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8678875006047398702",
+          "name": "id",
+          "indexId": "8:1931714848052502208",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:7886228567091016435",
+          "name": "conversationId",
+          "indexId": "9:8398178854815794427",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "4:8535353238835485296",
+          "name": "text",
+          "type": 9
+        },
+        {
+          "id": "5:2788912061797864651",
+          "name": "isUser",
+          "type": 1
+        },
+        {
+          "id": "6:6641383691729694284",
+          "name": "timestamp",
+          "type": 6
+        },
+        {
+          "id": "7:3141504441000057276",
+          "name": "embedding",
+          "type": 29
+        },
+        {
+          "id": "8:1768838721030721925",
+          "name": "metadata",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "6:7299408086858101080",
+      "lastPropertyId": "10:8750788323217584790",
+      "name": "NoteEntity",
+      "properties": [
+        {
+          "id": "1:318182806322913334",
+          "name": "objectId",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:5911232282921097626",
+          "name": "id",
+          "indexId": "10:1154848934917385475",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:4973375408912457499",
+          "name": "projectId",
+          "indexId": "11:1871267548704318668",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "4:1952553850929880891",
+          "name": "conversationId",
+          "indexId": "12:8405236076308287654",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "5:5150646416869648578",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "6:2952401651905535101",
+          "name": "content",
+          "type": 9
+        },
+        {
+          "id": "7:7321575452524720645",
+          "name": "noteType",
+          "type": 9
+        },
+        {
+          "id": "8:8773613017900223274",
+          "name": "referencedPapers",
+          "type": 9
+        },
+        {
+          "id": "9:7276056741870673687",
+          "name": "createdAt",
+          "type": 6
+        },
+        {
+          "id": "10:8750788323217584790",
+          "name": "updatedAt",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "7:6640562168940910170",
+      "lastPropertyId": "6:535900037684915904",
+      "name": "ProjectEntity",
+      "properties": [
+        {
+          "id": "1:8658529872855256205",
+          "name": "objectId",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:6131566935808996157",
+          "name": "id",
+          "indexId": "13:5990802882775778095",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:5564495438009172484",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "4:1390000274193243850",
+          "name": "description",
+          "type": 9
+        },
+        {
+          "id": "5:2881990606278637068",
+          "name": "createdAt",
+          "type": 6
+        },
+        {
+          "id": "6:535900037684915904",
+          "name": "updatedAt",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "8:5571986382606999808",
+      "lastPropertyId": "8:3479148687732126498",
+      "name": "SimilarityEntity",
+      "properties": [
+        {
+          "id": "1:1920062113617047390",
+          "name": "objectId",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:5641315645486197440",
+          "name": "id",
+          "indexId": "14:571035016390514826",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:581548348028539525",
+          "name": "projectId",
+          "indexId": "15:7211145221528404239",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "4:5694027825100894346",
+          "name": "doc1Id",
+          "type": 9
+        },
+        {
+          "id": "5:756136118008406642",
+          "name": "doc2Id",
+          "type": 9
+        },
+        {
+          "id": "6:7192447699944268639",
+          "name": "similarityScore",
+          "type": 8
+        },
+        {
+          "id": "7:6799810474804772590",
+          "name": "computedAt",
+          "type": 6
+        },
+        {
+          "id": "8:3479148687732126498",
+          "name": "needsUpdate",
+          "type": 1
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "2:1869689020035618977",
-  "lastIndexId": "3:4581199378552730062",
+  "lastEntityId": "8:5571986382606999808",
+  "lastIndexId": "15:7211145221528404239",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

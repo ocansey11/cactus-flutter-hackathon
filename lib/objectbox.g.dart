@@ -14,6 +14,12 @@ import 'package:objectbox/internal.dart'
 import 'package:objectbox/objectbox.dart' as obx;
 import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
+import 'memory/entities/conversation_entity.dart';
+import 'memory/entities/document_metadata_entity.dart';
+import 'memory/entities/message_entity.dart';
+import 'memory/entities/note_entity.dart';
+import 'memory/entities/project_entity.dart';
+import 'memory/entities/similarity_entity.dart';
 import 'models/document.dart';
 
 export 'package:objectbox/objectbox.dart'; // so that callers only have to import this file
@@ -110,7 +116,368 @@ final _entities = <obx_int.ModelEntity>[
         type: 11,
         flags: 520,
         indexId: const obx_int.IdUid(2, 5798898100612670106),
+        relationField: 'document',
         relationTarget: 'Document',
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(3, 2617416385248953606),
+    name: 'ConversationEntity',
+    lastPropertyId: const obx_int.IdUid(7, 1060009147678557791),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 1547101101014507500),
+        name: 'objectId',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 7634570227937599096),
+        name: 'id',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(4, 2850450357795753942),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 60120734471259881),
+        name: 'title',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 5264892376357687216),
+        name: 'projectId',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(5, 4888970972699856262),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 8138608103091881129),
+        name: 'isVoiceMode',
+        type: 1,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 8459178114539488673),
+        name: 'createdAt',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 1060009147678557791),
+        name: 'updatedAt',
+        type: 6,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(4, 8040542858561334186),
+    name: 'DocumentMetadataEntity',
+    lastPropertyId: const obx_int.IdUid(9, 3044553595637880143),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 8850540418728823591),
+        name: 'objectId',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 7123928943014272078),
+        name: 'id',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(6, 6938945229732593059),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 8431175876606482876),
+        name: 'projectId',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(7, 2668716781406918444),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 6752078333306420539),
+        name: 'fileName',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 1469300595539296414),
+        name: 'filePath',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 4121775901676186040),
+        name: 'fileSize',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 8427528688909925831),
+        name: 'uploadedAt',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(8, 6364544506473654774),
+        name: 'lastModified',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(9, 3044553595637880143),
+        name: 'customMetadata',
+        type: 9,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(5, 8563557470803973959),
+    name: 'MessageEntity',
+    lastPropertyId: const obx_int.IdUid(8, 1768838721030721925),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 6786729368956907398),
+        name: 'objectId',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 8678875006047398702),
+        name: 'id',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(8, 1931714848052502208),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 7886228567091016435),
+        name: 'conversationId',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(9, 8398178854815794427),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 8535353238835485296),
+        name: 'text',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 2788912061797864651),
+        name: 'isUser',
+        type: 1,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 6641383691729694284),
+        name: 'timestamp',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 3141504441000057276),
+        name: 'embedding',
+        type: 29,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(8, 1768838721030721925),
+        name: 'metadata',
+        type: 9,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(6, 7299408086858101080),
+    name: 'NoteEntity',
+    lastPropertyId: const obx_int.IdUid(10, 8750788323217584790),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 318182806322913334),
+        name: 'objectId',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 5911232282921097626),
+        name: 'id',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(10, 1154848934917385475),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 4973375408912457499),
+        name: 'projectId',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(11, 1871267548704318668),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 1952553850929880891),
+        name: 'conversationId',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(12, 8405236076308287654),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 5150646416869648578),
+        name: 'title',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 2952401651905535101),
+        name: 'content',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 7321575452524720645),
+        name: 'noteType',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(8, 8773613017900223274),
+        name: 'referencedPapers',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(9, 7276056741870673687),
+        name: 'createdAt',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(10, 8750788323217584790),
+        name: 'updatedAt',
+        type: 6,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(7, 6640562168940910170),
+    name: 'ProjectEntity',
+    lastPropertyId: const obx_int.IdUid(6, 535900037684915904),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 8658529872855256205),
+        name: 'objectId',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 6131566935808996157),
+        name: 'id',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(13, 5990802882775778095),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 5564495438009172484),
+        name: 'name',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 1390000274193243850),
+        name: 'description',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 2881990606278637068),
+        name: 'createdAt',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 535900037684915904),
+        name: 'updatedAt',
+        type: 6,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(8, 5571986382606999808),
+    name: 'SimilarityEntity',
+    lastPropertyId: const obx_int.IdUid(8, 3479148687732126498),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 1920062113617047390),
+        name: 'objectId',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 5641315645486197440),
+        name: 'id',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(14, 571035016390514826),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 581548348028539525),
+        name: 'projectId',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(15, 7211145221528404239),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 5694027825100894346),
+        name: 'doc1Id',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 756136118008406642),
+        name: 'doc2Id',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 7192447699944268639),
+        name: 'similarityScore',
+        type: 8,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 6799810474804772590),
+        name: 'computedAt',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(8, 3479148687732126498),
+        name: 'needsUpdate',
+        type: 1,
+        flags: 0,
       ),
     ],
     relations: <obx_int.ModelRelation>[],
@@ -156,8 +523,8 @@ Future<obx.Store> openStore({
 obx_int.ModelDefinition getObjectBoxModel() {
   final model = obx_int.ModelInfo(
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(2, 1869689020035618977),
-    lastIndexId: const obx_int.IdUid(3, 4581199378552730062),
+    lastEntityId: const obx_int.IdUid(8, 5571986382606999808),
+    lastIndexId: const obx_int.IdUid(15, 7211145221528404239),
     lastRelationId: const obx_int.IdUid(0, 0),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
@@ -301,6 +668,479 @@ obx_int.ModelDefinition getObjectBoxModel() {
         return object;
       },
     ),
+    ConversationEntity: obx_int.EntityDefinition<ConversationEntity>(
+      model: _entities[2],
+      toOneRelations: (ConversationEntity object) => [],
+      toManyRelations: (ConversationEntity object) => {},
+      getId: (ConversationEntity object) => object.objectId,
+      setId: (ConversationEntity object, int id) {
+        object.objectId = id;
+      },
+      objectToFB: (ConversationEntity object, fb.Builder fbb) {
+        final idOffset = fbb.writeString(object.id);
+        final titleOffset = fbb.writeString(object.title);
+        final projectIdOffset = object.projectId == null
+            ? null
+            : fbb.writeString(object.projectId!);
+        fbb.startTable(8);
+        fbb.addInt64(0, object.objectId);
+        fbb.addOffset(1, idOffset);
+        fbb.addOffset(2, titleOffset);
+        fbb.addOffset(3, projectIdOffset);
+        fbb.addBool(4, object.isVoiceMode);
+        fbb.addInt64(5, object.createdAt);
+        fbb.addInt64(6, object.updatedAt);
+        fbb.finish(fbb.endTable());
+        return object.objectId;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final idParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final titleParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final projectIdParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 10);
+        final isVoiceModeParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          12,
+          false,
+        );
+        final createdAtParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          14,
+          0,
+        );
+        final updatedAtParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          16,
+          0,
+        );
+        final object =
+            ConversationEntity(
+                id: idParam,
+                title: titleParam,
+                projectId: projectIdParam,
+                isVoiceMode: isVoiceModeParam,
+                createdAt: createdAtParam,
+                updatedAt: updatedAtParam,
+              )
+              ..objectId = const fb.Int64Reader().vTableGet(
+                buffer,
+                rootOffset,
+                4,
+                0,
+              );
+
+        return object;
+      },
+    ),
+    DocumentMetadataEntity: obx_int.EntityDefinition<DocumentMetadataEntity>(
+      model: _entities[3],
+      toOneRelations: (DocumentMetadataEntity object) => [],
+      toManyRelations: (DocumentMetadataEntity object) => {},
+      getId: (DocumentMetadataEntity object) => object.objectId,
+      setId: (DocumentMetadataEntity object, int id) {
+        object.objectId = id;
+      },
+      objectToFB: (DocumentMetadataEntity object, fb.Builder fbb) {
+        final idOffset = fbb.writeString(object.id);
+        final projectIdOffset = fbb.writeString(object.projectId);
+        final fileNameOffset = fbb.writeString(object.fileName);
+        final filePathOffset = fbb.writeString(object.filePath);
+        final customMetadataOffset = object.customMetadata == null
+            ? null
+            : fbb.writeString(object.customMetadata!);
+        fbb.startTable(10);
+        fbb.addInt64(0, object.objectId);
+        fbb.addOffset(1, idOffset);
+        fbb.addOffset(2, projectIdOffset);
+        fbb.addOffset(3, fileNameOffset);
+        fbb.addOffset(4, filePathOffset);
+        fbb.addInt64(5, object.fileSize);
+        fbb.addInt64(6, object.uploadedAt);
+        fbb.addInt64(7, object.lastModified);
+        fbb.addOffset(8, customMetadataOffset);
+        fbb.finish(fbb.endTable());
+        return object.objectId;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final idParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final projectIdParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final fileNameParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 10, '');
+        final filePathParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 12, '');
+        final fileSizeParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          14,
+          0,
+        );
+        final uploadedAtParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          16,
+          0,
+        );
+        final lastModifiedParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          18,
+          0,
+        );
+        final customMetadataParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 20);
+        final object =
+            DocumentMetadataEntity(
+                id: idParam,
+                projectId: projectIdParam,
+                fileName: fileNameParam,
+                filePath: filePathParam,
+                fileSize: fileSizeParam,
+                uploadedAt: uploadedAtParam,
+                lastModified: lastModifiedParam,
+                customMetadata: customMetadataParam,
+              )
+              ..objectId = const fb.Int64Reader().vTableGet(
+                buffer,
+                rootOffset,
+                4,
+                0,
+              );
+
+        return object;
+      },
+    ),
+    MessageEntity: obx_int.EntityDefinition<MessageEntity>(
+      model: _entities[4],
+      toOneRelations: (MessageEntity object) => [],
+      toManyRelations: (MessageEntity object) => {},
+      getId: (MessageEntity object) => object.objectId,
+      setId: (MessageEntity object, int id) {
+        object.objectId = id;
+      },
+      objectToFB: (MessageEntity object, fb.Builder fbb) {
+        final idOffset = fbb.writeString(object.id);
+        final conversationIdOffset = fbb.writeString(object.conversationId);
+        final textOffset = fbb.writeString(object.text);
+        final embeddingOffset = object.embedding == null
+            ? null
+            : fbb.writeListFloat64(object.embedding!);
+        final metadataOffset = object.metadata == null
+            ? null
+            : fbb.writeString(object.metadata!);
+        fbb.startTable(9);
+        fbb.addInt64(0, object.objectId);
+        fbb.addOffset(1, idOffset);
+        fbb.addOffset(2, conversationIdOffset);
+        fbb.addOffset(3, textOffset);
+        fbb.addBool(4, object.isUser);
+        fbb.addInt64(5, object.timestamp);
+        fbb.addOffset(6, embeddingOffset);
+        fbb.addOffset(7, metadataOffset);
+        fbb.finish(fbb.endTable());
+        return object.objectId;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final idParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final conversationIdParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final textParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 10, '');
+        final isUserParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          12,
+          false,
+        );
+        final timestampParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          14,
+          0,
+        );
+        final embeddingParam = const fb.ListReader<double>(
+          fb.Float64Reader(),
+          lazy: false,
+        ).vTableGetNullable(buffer, rootOffset, 16);
+        final metadataParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 18);
+        final object =
+            MessageEntity(
+                id: idParam,
+                conversationId: conversationIdParam,
+                text: textParam,
+                isUser: isUserParam,
+                timestamp: timestampParam,
+                embedding: embeddingParam,
+                metadata: metadataParam,
+              )
+              ..objectId = const fb.Int64Reader().vTableGet(
+                buffer,
+                rootOffset,
+                4,
+                0,
+              );
+
+        return object;
+      },
+    ),
+    NoteEntity: obx_int.EntityDefinition<NoteEntity>(
+      model: _entities[5],
+      toOneRelations: (NoteEntity object) => [],
+      toManyRelations: (NoteEntity object) => {},
+      getId: (NoteEntity object) => object.objectId,
+      setId: (NoteEntity object, int id) {
+        object.objectId = id;
+      },
+      objectToFB: (NoteEntity object, fb.Builder fbb) {
+        final idOffset = fbb.writeString(object.id);
+        final projectIdOffset = fbb.writeString(object.projectId);
+        final conversationIdOffset = fbb.writeString(object.conversationId);
+        final titleOffset = fbb.writeString(object.title);
+        final contentOffset = fbb.writeString(object.content);
+        final noteTypeOffset = fbb.writeString(object.noteType);
+        final referencedPapersOffset = fbb.writeString(object.referencedPapers);
+        fbb.startTable(11);
+        fbb.addInt64(0, object.objectId);
+        fbb.addOffset(1, idOffset);
+        fbb.addOffset(2, projectIdOffset);
+        fbb.addOffset(3, conversationIdOffset);
+        fbb.addOffset(4, titleOffset);
+        fbb.addOffset(5, contentOffset);
+        fbb.addOffset(6, noteTypeOffset);
+        fbb.addOffset(7, referencedPapersOffset);
+        fbb.addInt64(8, object.createdAt);
+        fbb.addInt64(9, object.updatedAt);
+        fbb.finish(fbb.endTable());
+        return object.objectId;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final idParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final projectIdParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final conversationIdParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 10, '');
+        final titleParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 12, '');
+        final contentParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 14, '');
+        final noteTypeParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 16, '');
+        final referencedPapersParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 18, '');
+        final createdAtParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          20,
+          0,
+        );
+        final updatedAtParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          22,
+          0,
+        );
+        final object =
+            NoteEntity(
+                id: idParam,
+                projectId: projectIdParam,
+                conversationId: conversationIdParam,
+                title: titleParam,
+                content: contentParam,
+                noteType: noteTypeParam,
+                referencedPapers: referencedPapersParam,
+                createdAt: createdAtParam,
+                updatedAt: updatedAtParam,
+              )
+              ..objectId = const fb.Int64Reader().vTableGet(
+                buffer,
+                rootOffset,
+                4,
+                0,
+              );
+
+        return object;
+      },
+    ),
+    ProjectEntity: obx_int.EntityDefinition<ProjectEntity>(
+      model: _entities[6],
+      toOneRelations: (ProjectEntity object) => [],
+      toManyRelations: (ProjectEntity object) => {},
+      getId: (ProjectEntity object) => object.objectId,
+      setId: (ProjectEntity object, int id) {
+        object.objectId = id;
+      },
+      objectToFB: (ProjectEntity object, fb.Builder fbb) {
+        final idOffset = fbb.writeString(object.id);
+        final nameOffset = fbb.writeString(object.name);
+        final descriptionOffset = object.description == null
+            ? null
+            : fbb.writeString(object.description!);
+        fbb.startTable(7);
+        fbb.addInt64(0, object.objectId);
+        fbb.addOffset(1, idOffset);
+        fbb.addOffset(2, nameOffset);
+        fbb.addOffset(3, descriptionOffset);
+        fbb.addInt64(4, object.createdAt);
+        fbb.addInt64(5, object.updatedAt);
+        fbb.finish(fbb.endTable());
+        return object.objectId;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final idParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final nameParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final descriptionParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 10);
+        final createdAtParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          12,
+          0,
+        );
+        final updatedAtParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          14,
+          0,
+        );
+        final object =
+            ProjectEntity(
+                id: idParam,
+                name: nameParam,
+                description: descriptionParam,
+                createdAt: createdAtParam,
+                updatedAt: updatedAtParam,
+              )
+              ..objectId = const fb.Int64Reader().vTableGet(
+                buffer,
+                rootOffset,
+                4,
+                0,
+              );
+
+        return object;
+      },
+    ),
+    SimilarityEntity: obx_int.EntityDefinition<SimilarityEntity>(
+      model: _entities[7],
+      toOneRelations: (SimilarityEntity object) => [],
+      toManyRelations: (SimilarityEntity object) => {},
+      getId: (SimilarityEntity object) => object.objectId,
+      setId: (SimilarityEntity object, int id) {
+        object.objectId = id;
+      },
+      objectToFB: (SimilarityEntity object, fb.Builder fbb) {
+        final idOffset = fbb.writeString(object.id);
+        final projectIdOffset = fbb.writeString(object.projectId);
+        final doc1IdOffset = fbb.writeString(object.doc1Id);
+        final doc2IdOffset = fbb.writeString(object.doc2Id);
+        fbb.startTable(9);
+        fbb.addInt64(0, object.objectId);
+        fbb.addOffset(1, idOffset);
+        fbb.addOffset(2, projectIdOffset);
+        fbb.addOffset(3, doc1IdOffset);
+        fbb.addOffset(4, doc2IdOffset);
+        fbb.addFloat64(5, object.similarityScore);
+        fbb.addInt64(6, object.computedAt);
+        fbb.addBool(7, object.needsUpdate);
+        fbb.finish(fbb.endTable());
+        return object.objectId;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final idParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final projectIdParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final doc1IdParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 10, '');
+        final doc2IdParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 12, '');
+        final similarityScoreParam = const fb.Float64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          14,
+          0,
+        );
+        final computedAtParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          16,
+          0,
+        );
+        final needsUpdateParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          18,
+          false,
+        );
+        final object =
+            SimilarityEntity(
+                id: idParam,
+                projectId: projectIdParam,
+                doc1Id: doc1IdParam,
+                doc2Id: doc2IdParam,
+                similarityScore: similarityScoreParam,
+                computedAt: computedAtParam,
+                needsUpdate: needsUpdateParam,
+              )
+              ..objectId = const fb.Int64Reader().vTableGet(
+                buffer,
+                rootOffset,
+                4,
+                0,
+              );
+
+        return object;
+      },
+    ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -369,5 +1209,263 @@ class DocumentChunk_ {
   /// See [DocumentChunk.document].
   static final document = obx.QueryRelationToOne<DocumentChunk, Document>(
     _entities[1].properties[3],
+  );
+}
+
+/// [ConversationEntity] entity fields to define ObjectBox queries.
+class ConversationEntity_ {
+  /// See [ConversationEntity.objectId].
+  static final objectId = obx.QueryIntegerProperty<ConversationEntity>(
+    _entities[2].properties[0],
+  );
+
+  /// See [ConversationEntity.id].
+  static final id = obx.QueryStringProperty<ConversationEntity>(
+    _entities[2].properties[1],
+  );
+
+  /// See [ConversationEntity.title].
+  static final title = obx.QueryStringProperty<ConversationEntity>(
+    _entities[2].properties[2],
+  );
+
+  /// See [ConversationEntity.projectId].
+  static final projectId = obx.QueryStringProperty<ConversationEntity>(
+    _entities[2].properties[3],
+  );
+
+  /// See [ConversationEntity.isVoiceMode].
+  static final isVoiceMode = obx.QueryBooleanProperty<ConversationEntity>(
+    _entities[2].properties[4],
+  );
+
+  /// See [ConversationEntity.createdAt].
+  static final createdAt = obx.QueryIntegerProperty<ConversationEntity>(
+    _entities[2].properties[5],
+  );
+
+  /// See [ConversationEntity.updatedAt].
+  static final updatedAt = obx.QueryIntegerProperty<ConversationEntity>(
+    _entities[2].properties[6],
+  );
+}
+
+/// [DocumentMetadataEntity] entity fields to define ObjectBox queries.
+class DocumentMetadataEntity_ {
+  /// See [DocumentMetadataEntity.objectId].
+  static final objectId = obx.QueryIntegerProperty<DocumentMetadataEntity>(
+    _entities[3].properties[0],
+  );
+
+  /// See [DocumentMetadataEntity.id].
+  static final id = obx.QueryStringProperty<DocumentMetadataEntity>(
+    _entities[3].properties[1],
+  );
+
+  /// See [DocumentMetadataEntity.projectId].
+  static final projectId = obx.QueryStringProperty<DocumentMetadataEntity>(
+    _entities[3].properties[2],
+  );
+
+  /// See [DocumentMetadataEntity.fileName].
+  static final fileName = obx.QueryStringProperty<DocumentMetadataEntity>(
+    _entities[3].properties[3],
+  );
+
+  /// See [DocumentMetadataEntity.filePath].
+  static final filePath = obx.QueryStringProperty<DocumentMetadataEntity>(
+    _entities[3].properties[4],
+  );
+
+  /// See [DocumentMetadataEntity.fileSize].
+  static final fileSize = obx.QueryIntegerProperty<DocumentMetadataEntity>(
+    _entities[3].properties[5],
+  );
+
+  /// See [DocumentMetadataEntity.uploadedAt].
+  static final uploadedAt = obx.QueryIntegerProperty<DocumentMetadataEntity>(
+    _entities[3].properties[6],
+  );
+
+  /// See [DocumentMetadataEntity.lastModified].
+  static final lastModified = obx.QueryIntegerProperty<DocumentMetadataEntity>(
+    _entities[3].properties[7],
+  );
+
+  /// See [DocumentMetadataEntity.customMetadata].
+  static final customMetadata = obx.QueryStringProperty<DocumentMetadataEntity>(
+    _entities[3].properties[8],
+  );
+}
+
+/// [MessageEntity] entity fields to define ObjectBox queries.
+class MessageEntity_ {
+  /// See [MessageEntity.objectId].
+  static final objectId = obx.QueryIntegerProperty<MessageEntity>(
+    _entities[4].properties[0],
+  );
+
+  /// See [MessageEntity.id].
+  static final id = obx.QueryStringProperty<MessageEntity>(
+    _entities[4].properties[1],
+  );
+
+  /// See [MessageEntity.conversationId].
+  static final conversationId = obx.QueryStringProperty<MessageEntity>(
+    _entities[4].properties[2],
+  );
+
+  /// See [MessageEntity.text].
+  static final text = obx.QueryStringProperty<MessageEntity>(
+    _entities[4].properties[3],
+  );
+
+  /// See [MessageEntity.isUser].
+  static final isUser = obx.QueryBooleanProperty<MessageEntity>(
+    _entities[4].properties[4],
+  );
+
+  /// See [MessageEntity.timestamp].
+  static final timestamp = obx.QueryIntegerProperty<MessageEntity>(
+    _entities[4].properties[5],
+  );
+
+  /// See [MessageEntity.embedding].
+  static final embedding = obx.QueryDoubleVectorProperty<MessageEntity>(
+    _entities[4].properties[6],
+  );
+
+  /// See [MessageEntity.metadata].
+  static final metadata = obx.QueryStringProperty<MessageEntity>(
+    _entities[4].properties[7],
+  );
+}
+
+/// [NoteEntity] entity fields to define ObjectBox queries.
+class NoteEntity_ {
+  /// See [NoteEntity.objectId].
+  static final objectId = obx.QueryIntegerProperty<NoteEntity>(
+    _entities[5].properties[0],
+  );
+
+  /// See [NoteEntity.id].
+  static final id = obx.QueryStringProperty<NoteEntity>(
+    _entities[5].properties[1],
+  );
+
+  /// See [NoteEntity.projectId].
+  static final projectId = obx.QueryStringProperty<NoteEntity>(
+    _entities[5].properties[2],
+  );
+
+  /// See [NoteEntity.conversationId].
+  static final conversationId = obx.QueryStringProperty<NoteEntity>(
+    _entities[5].properties[3],
+  );
+
+  /// See [NoteEntity.title].
+  static final title = obx.QueryStringProperty<NoteEntity>(
+    _entities[5].properties[4],
+  );
+
+  /// See [NoteEntity.content].
+  static final content = obx.QueryStringProperty<NoteEntity>(
+    _entities[5].properties[5],
+  );
+
+  /// See [NoteEntity.noteType].
+  static final noteType = obx.QueryStringProperty<NoteEntity>(
+    _entities[5].properties[6],
+  );
+
+  /// See [NoteEntity.referencedPapers].
+  static final referencedPapers = obx.QueryStringProperty<NoteEntity>(
+    _entities[5].properties[7],
+  );
+
+  /// See [NoteEntity.createdAt].
+  static final createdAt = obx.QueryIntegerProperty<NoteEntity>(
+    _entities[5].properties[8],
+  );
+
+  /// See [NoteEntity.updatedAt].
+  static final updatedAt = obx.QueryIntegerProperty<NoteEntity>(
+    _entities[5].properties[9],
+  );
+}
+
+/// [ProjectEntity] entity fields to define ObjectBox queries.
+class ProjectEntity_ {
+  /// See [ProjectEntity.objectId].
+  static final objectId = obx.QueryIntegerProperty<ProjectEntity>(
+    _entities[6].properties[0],
+  );
+
+  /// See [ProjectEntity.id].
+  static final id = obx.QueryStringProperty<ProjectEntity>(
+    _entities[6].properties[1],
+  );
+
+  /// See [ProjectEntity.name].
+  static final name = obx.QueryStringProperty<ProjectEntity>(
+    _entities[6].properties[2],
+  );
+
+  /// See [ProjectEntity.description].
+  static final description = obx.QueryStringProperty<ProjectEntity>(
+    _entities[6].properties[3],
+  );
+
+  /// See [ProjectEntity.createdAt].
+  static final createdAt = obx.QueryIntegerProperty<ProjectEntity>(
+    _entities[6].properties[4],
+  );
+
+  /// See [ProjectEntity.updatedAt].
+  static final updatedAt = obx.QueryIntegerProperty<ProjectEntity>(
+    _entities[6].properties[5],
+  );
+}
+
+/// [SimilarityEntity] entity fields to define ObjectBox queries.
+class SimilarityEntity_ {
+  /// See [SimilarityEntity.objectId].
+  static final objectId = obx.QueryIntegerProperty<SimilarityEntity>(
+    _entities[7].properties[0],
+  );
+
+  /// See [SimilarityEntity.id].
+  static final id = obx.QueryStringProperty<SimilarityEntity>(
+    _entities[7].properties[1],
+  );
+
+  /// See [SimilarityEntity.projectId].
+  static final projectId = obx.QueryStringProperty<SimilarityEntity>(
+    _entities[7].properties[2],
+  );
+
+  /// See [SimilarityEntity.doc1Id].
+  static final doc1Id = obx.QueryStringProperty<SimilarityEntity>(
+    _entities[7].properties[3],
+  );
+
+  /// See [SimilarityEntity.doc2Id].
+  static final doc2Id = obx.QueryStringProperty<SimilarityEntity>(
+    _entities[7].properties[4],
+  );
+
+  /// See [SimilarityEntity.similarityScore].
+  static final similarityScore = obx.QueryDoubleProperty<SimilarityEntity>(
+    _entities[7].properties[5],
+  );
+
+  /// See [SimilarityEntity.computedAt].
+  static final computedAt = obx.QueryIntegerProperty<SimilarityEntity>(
+    _entities[7].properties[6],
+  );
+
+  /// See [SimilarityEntity.needsUpdate].
+  static final needsUpdate = obx.QueryBooleanProperty<SimilarityEntity>(
+    _entities[7].properties[7],
   );
 }
