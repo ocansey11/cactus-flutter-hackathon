@@ -58,7 +58,7 @@ final tools = [
   CactusTool(
     name: "analyze_research_paper",
     description:
-        "Analyze and summarize a research paper with structured sections (background, methodology, results, etc.)",
+        "Read and extract specific sections from a research paper (background, methodology, results, conclusion). Use only for reading/extracting existing content, not for creating summaries.",
     parameters: ToolParametersSchema(
       properties: {
         'paper_name': ToolParameter(
@@ -76,7 +76,7 @@ final tools = [
   CactusTool(
     name: "get_project_context",
     description:
-        "Get information about the current research project including paper count, notes, objectives, and project details. Use when user asks about the current project, papers gathered, project goals, or statistics.",
+        "Retrieve existing information about the current research project: how many papers exist, what notes already exist, project statistics. Use ONLY when user asks 'how many papers', 'what papers do I have', 'show my notes', 'project stats'.",
     parameters: ToolParametersSchema(
       properties: {
         'info_type': ToolParameter(
@@ -93,7 +93,7 @@ final tools = [
   CactusTool(
     name: "create_project_note",
     description:
-        "Create and save a note for the current project. Can generate paper summaries, project objectives, or project plans. Use when user asks to create/write a summary, set objectives, or make a plan.",
+        "WRITE, CREATE, or GENERATE a new summary, objective, or plan for a paper or project. Use when user says 'write a summary', 'create a summary', 'summarize the paper', 'generate summary'. This tool CREATES new content.",
     parameters: ToolParametersSchema(
       properties: {
         'note_type': ToolParameter(
@@ -121,6 +121,7 @@ class ToolRegistry {
     RAGService? ragService,
     CactusLM? chatModel,
     ProjectService? projectService,
+    String? cactusToken,
   }) async {
     switch (toolName) {
       case 'compute_document_similarity':
@@ -133,7 +134,7 @@ class ToolRegistry {
         return await ProjectContextTool.execute(arguments, projectService, ragService);
 
       case 'create_project_note':
-        return await CreateProjectNoteTool.execute(arguments, projectService, ragService, chatModel);
+        return await CreateProjectNoteTool.execute(arguments, projectService, ragService, chatModel, cactusToken);
 
       default:
         return 'Unknown tool: $toolName';

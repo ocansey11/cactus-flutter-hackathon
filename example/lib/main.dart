@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cactus/cactus.dart';
+import 'config.dart';
 import 'pages/projects_page.dart';
 import 'services/conversation_service.dart';
 import 'services/chat_service.dart';
@@ -7,6 +8,7 @@ import 'services/rag_service.dart';
 import 'services/function_calling_service.dart';
 import 'services/message_router.dart';
 import 'services/model_manager.dart';
+import 'tools/tool_registry.dart';
 
 void main() {
   runApp(const MyApp());
@@ -44,7 +46,7 @@ class _MainPageState extends State<MainPage> {
 
   late CactusLM _embeddingModel;
   late CactusLM _chatModel;
-  late CactusLM _functionModel;
+  late CactusLM _functionModel;  // Qwen for tool calling (reuses chat model)
   late ConversationService _conversationService;
   ProjectService? _projectService;
 
@@ -67,7 +69,7 @@ class _MainPageState extends State<MainPage> {
   Future<void> _initializeServices() async {
     try {
       setState(
-          () => _statusMessage = 'Loading Qwen embedding model (600MB)...');
+          () => _statusMessage = 'Loading Qwen model (600MB)...');
       _embeddingModel = await ModelManager.getOrInitializeLLM(
         modelName: 'qwen3-0.6',
         progressCallback: (progress, status, isError) {
@@ -81,22 +83,7 @@ class _MainPageState extends State<MainPage> {
         },
       );
 
-      setState(
-          () => _statusMessage = 'Loading Gemma function model (270MB)...');
-      _functionModel = await ModelManager.getOrInitializeLLM(
-        modelName: 'gemma3-270m',
-        progressCallback: (progress, status, isError) {
-          setState(() {
-            if (isError) {
-              _statusMessage = 'Error: $status';
-            } else {
-              _statusMessage = status;
-            }
-          });
-        },
-      );
-
-      setState(() => _statusMessage = 'Loading Qwen chat model (cached)...');
+      setState(() => _statusMessage = 'Configuring Qwen for chat...');
       _chatModel = await ModelManager.getOrInitializeLLM(
         modelName: 'qwen3-0.6',
         progressCallback: (progress, status, isError) {
@@ -110,6 +97,10 @@ class _MainPageState extends State<MainPage> {
         },
       );
 
+      setState(() => _statusMessage = 'Using Qwen for tool calling...');
+      _functionModel = _chatModel;  // Reuse Qwen model for both chat and tools
+      setState(() => _statusMessage = 'Qwen configured for tool calling...');
+
       setState(() => _statusMessage = 'Setting up services...');
 
       final ragService = RAGService(
@@ -119,8 +110,8 @@ class _MainPageState extends State<MainPage> {
       await ragService.initialize();
 
       final functionService = FunctionCallingService(
-        queryAnalyzer: _chatModel,       // Qwen - smart query understanding
-        functionModel: _functionModel,   // Gemma - lightweight function dispatcher
+        model: _functionModel,  // Qwen handles tool calling
+        tools: tools,           // Tools from tool_registry.dart
       );
 
       final chatService = ChatService(
@@ -141,7 +132,17 @@ class _MainPageState extends State<MainPage> {
         ragService: ragService,
         messageRouter: messageRouter,
         projectService: _projectService,
+        cactusToken: AppConfig.cactusToken.isEmpty ? null : AppConfig.cactusToken,
       );
+
+      // Log hybrid mode status
+      if (AppConfig.cactusToken.isEmpty) {
+        debugPrint('⚠️  Running in LOCAL-ONLY mode. Memory-intensive tasks may crash.');
+        debugPrint('💡 Add your Cactus token to lib/config.dart to enable hybrid cloud fallback.');
+        debugPrint('📍 Get your token from: https://www.cactuscompute.com/dashboard');
+      } else {
+        debugPrint('✅ Hybrid mode enabled! Heavy compute will use Cactus cloud fallback.');
+      }
 
       setState(() {
         _isInitialized = true;

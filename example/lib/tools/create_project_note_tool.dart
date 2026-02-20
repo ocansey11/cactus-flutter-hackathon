@@ -35,6 +35,7 @@ class CreateProjectNoteTool {
     ProjectService? projectService,
     RAGService? ragService,
     CactusLM? chatModel,
+    String? cactusToken,
   ) async {
     if (projectService == null || projectService.currentProject == null) {
       return 'Error: No project is currently active. Please select or create a project first.';
@@ -78,65 +79,67 @@ class CreateProjectNoteTool {
         final searchResults = await ragService.search(
           query: paperName,
           projectName: currentProject.name,
-          limit: 10,
+          limit: 2,  // Minimal chunks to reduce memory
         );
 
         if (searchResults.isEmpty) {
           return 'Error: Could not retrieve content for paper "${paper.fileName}".';
         }
 
-        // Build context from chunks
-        final paperContext = searchResults.map((r) => r.chunk.content).join('\n\n');
+        // Build context from chunks - very limited to avoid iOS memory crash
+        final paperContext = searchResults
+            .map((r) => r.chunk.content)
+            .join('\n\n')
+            .substring(0, (searchResults.map((r) => r.chunk.content).join('\n\n').length).clamp(0, 1200));  // Max 1200 chars
 
         // Generate summary using chat model
-        final summaryPrompt = '''Analyze and summarize this research paper in markdown format.
+        print('📝 Generating summary for paper: ${paper.fileName}');
+        print('   Context length: ${paperContext.length} chars');
+        
+        final summaryPrompt = '''Summarize this research paper briefly:
 
 Paper: ${paper.fileName}
 
 Content:
 $paperContext
 
-Create a comprehensive summary with the following structure:
+Provide a concise summary covering:
+- Main topic and objectives
+- Key findings
+- Significance
 
-# Summary: ${paper.fileName}
+Keep it brief and informative.''';
 
-## Overview
-[Brief overview of what the paper is about]
-
-## Key Objectives
-[Main goals and research questions]
-
-## Methodology
-[Approach and methods used]
-
-## Main Findings
-[Key results and discoveries]
-
-## Conclusions
-[Main conclusions and implications]
-
-## Significance
-[Why this work matters]
-
-Use clear, concise markdown formatting. Keep it informative but readable.''';
-
+        print('   Calling chat model for summary generation...');
+        print('   Using ${cactusToken != null && cactusToken.isNotEmpty ? "hybrid (cloud fallback)" : "local only"} mode');
+        
         final response = await chatModel.generateCompletion(
           messages: [
             ChatMessage(content: summaryPrompt, role: 'user'),
           ],
           params: CactusCompletionParams(
-            maxTokens: 1500,
+            maxTokens: 500,  // Reduced to fit iOS memory
             temperature: 0.7,
+            completionMode: (cactusToken != null && cactusToken.isNotEmpty) 
+                ? CompletionMode.hybrid 
+                : CompletionMode.local,
+            cactusToken: cactusToken,
           ),
         );
 
+        print('   Chat model response received:');
+        print('     success: ${response.success}');
+        print('     response length: ${response.response.length} chars');
+        
         if (!response.success) {
+          print('❌ Summary generation failed!');
           return 'Error generating summary. Please try again.';
         }
 
         noteTitle = 'Summary-${paper.fileName}';
         noteContent = response.response;
         noteCategory = 'summary';
+        print('✅ Summary generated successfully');
 
       } else if (noteType == 'objective') {
         // Create project objective note
@@ -244,23 +247,43 @@ Format in clean, actionable markdown.''';
       }
 
       // Save the note to the project
-      print('>>> Saving note to database...');
-      await projectService.createNote(
-        projectId: currentProject.id,
-        title: noteTitle,
-        content: noteContent,
-        noteType: noteCategory,
-      );
-      print('>>> Note saved to database successfully');
+      print('💾 Saving note to database...');
+      print('   Project ID: ${currentProject.id}');
+      print('   Note title: $noteTitle');
+      print('   Note type: $noteCategory');
+      print('   Content length: ${noteContent.length} chars');
+      
+      try {
+        await projectService.createNote(
+          projectId: currentProject.id,
+          title: noteTitle,
+          content: noteContent,
+          noteType: noteCategory,
+        );
+        print('✅ Note saved to database successfully');
+      } catch (e, stackTrace) {
+        print('❌ Failed to save note to database!');
+        print('   Error: $e');
+        print('   Stack trace: $stackTrace');
+        return 'Error: Failed to save note to database: $e';
+      }
 
       // Also save to file system
-      print('>>> Saving note to file system...');
-      await projectService.storageService.saveNote(
-        projectName: currentProject.name,
-        noteTitle: noteTitle,
-        content: noteContent,
-      );
-      print('>>> Note saved to file system successfully');
+      print('💾 Saving note to file system...');
+      try {
+        await projectService.storageService.saveNote(
+          projectName: currentProject.name,
+          noteTitle: noteTitle,
+          content: noteContent,
+        );
+        print('✅ Note saved to file system successfully');
+      } catch (e, stackTrace) {
+        print('❌ Failed to save note to file system!');
+        print('   Error: $e');
+        print('   Stack trace: $stackTrace');
+        // Don't return error here, database save was successful
+        print('⚠️  Continuing despite file system save failure...');
+      }
 
       // Return a concise confirmation message
       print('>>> Building confirmation message...');
@@ -281,7 +304,12 @@ Format in clean, actionable markdown.''';
       
       return confirmationMessage;
 
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ TOOL EXECUTION FAILED!');
+      print('   Error type: ${e.runtimeType}');
+      print('   Error message: $e');
+      print('   Stack trace:');
+      print('$stackTrace');
       return 'Error creating note: $e';
     }
   }

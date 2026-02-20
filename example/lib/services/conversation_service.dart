@@ -10,12 +10,14 @@ class ConversationService {
   final ChatService chatService;
   final MessageRouter? messageRouter;
   final ProjectService? projectService;
+  final String? cactusToken;
   
   ConversationService({
     this.ragService,
     required this.chatService,
     this.messageRouter,
     this.projectService,
+    this.cactusToken,
   });
   
   Future<String> handleQuery({
@@ -46,6 +48,7 @@ class ConversationService {
           ragService: ragService,
           chatModel: chatService.chatModel,
           projectService: projectService,
+          cactusToken: cactusToken,
         );
         print('✅ Tool execution completed successfully');
         
