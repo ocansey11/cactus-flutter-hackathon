@@ -126,6 +126,7 @@ class _MainPageState extends State<MainPage> {
       _projectService = ProjectService(
         store: _rag.store,
       );
+      await _projectService!.initialize();
 
       _conversationService = ConversationService(
         chatService: chatService,
