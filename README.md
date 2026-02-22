@@ -1,8 +1,8 @@
 # Cactus Flutter Hackathon — Local AI Assistant
 
-A privacy-first, offline AI assistant built on the [Cactus](https://github.com/cactus-compute/cactus) Flutter framework. Built during the Silicon South hackathon in Bournemouth.
+A privacy-first, offline AI assistant built on the [Cactus](https://github.com/cactus-compute/cactus) Flutter framework. Built before the Cactus x Deep Mind function gemma hackathon in UCL London
 
-Features persistent conversation memory, RAG document search, voice transcription, and tool calling — all running entirely on-device with no cloud dependencies.
+To work with local models you need these basic features persistent conversation memory, RAG document search, voice transcription, and tool calling — all running entirely on-device with no cloud dependencies. We have setup this as a preparation to the hackathon and hopefully build an actual end to end service around these foudndations.
 
 ---
 
