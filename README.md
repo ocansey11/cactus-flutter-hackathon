@@ -14,7 +14,7 @@ git clone https://github.com/ocansey11/cactus-flutter-hackathon.git
 cd cactus-flutter-hackathon
 git checkout merging-core
 
-> `merging-core` is the main working branch. It contains persistent memory, tool calling, and the message router.
+> `merging-core` is the most up to datte working branch. It contains persistent memory, tool calling, and the message router.
 
 ### 2. Install dependencies
 
@@ -22,9 +22,9 @@ flutter pub get
 
 ### 3. Run the app
 
-cd example
-flutter pub get
-flutter run
+- `cd example`
+- `flutter pub get`
+- `flutter run`
 
 The app will prompt you to download the model on first launch (~500MB). After that, everything runs offline.
 
@@ -48,8 +48,8 @@ You need a physical Android device or emulator with API level 24+.
 
 ### Run
 
-flutter devices       # confirm your device shows up
-flutter run           # deploys to connected Android device
+- `flutter devices`       # confirm your device shows up
+- `flutter run`          # deploys to connected Android device
 
 ---
 
